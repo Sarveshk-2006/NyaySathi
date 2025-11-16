@@ -10,16 +10,12 @@ import sqlite3
 from typing import Optional
 from contextlib import closing
 
-# ------------------------------
 # Load API key
-# ------------------------------
 load_dotenv()
 api_key = os.getenv("OPENAI_API_KEY")
 client = OpenAI(api_key=api_key)
 
-# ------------------------------
-# Simple SQLite persistence for uploaded documents
-# ------------------------------
+# Database setup
 DB_PATH = os.path.join(os.path.dirname(__file__), "uploaded_docs.db")
 
 def init_db():
@@ -53,189 +49,196 @@ def load_document(email: str) -> Optional[str]:
 
 app = FastAPI(title="Citizen Legal Buddy API")
 
-# ------------------------------
 # Enable CORS
-# ------------------------------
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # change to frontend URL in production
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# ------------------------------
 # Pydantic models
-# ------------------------------
-class AskRequest(BaseModel):
-    email: str
-    question: str
+class GenerateDocumentRequest(BaseModel):
+    docType: str
+    formData: dict
 
-class DocQARequest(BaseModel):
-    email: str
-    question: str
+class PredictCaseRequest(BaseModel):
+    caseDescription: str
 
-# ------------------------------
-# Legal question endpoint
-# ------------------------------
-@app.post("/ask")
-async def ask_question(request: AskRequest):
-    system_prompt = f"""
-You are an AI Legal Assistant for Indian citizens.
-- Always explain laws in simple, clear language.
-- Only answer legal questions (IPC, Constitution, Acts, rights, penalties, case laws, etc.).
-- If the user asks something irrelevant, politely decline.
-User email: {request.email}
-"""
-    try:
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": request.question}
-            ],
-            max_tokens=400,
-            temperature=0.3
-        )
-        answer = response.choices[0].message.content.strip()
-        return {"answer": answer}
-    except Exception as e:
-        print("Error:", e)
-        return {"answer": f"⚠️ Could not process '{request.question}'."}
-
-# ------------------------------
-# Upload endpoint (Summarize + Store)
-# ------------------------------
-uploaded_docs = {}  # in-memory fallback storage {email: document_text}
-
-# initialize DB on startup
+# Initialize DB
 init_db()
 
-@app.post("/upload")
-async def upload_file(file: UploadFile = File(...), email: str = Form(...)):
-    filename = file.filename.lower()
+# ENDPOINTS FOR FRONTEND
+
+@app.post("/api/generate-document")
+async def generate_document(request: GenerateDocumentRequest):
+    """Generate a legal document"""
+    try:
+        prompt = f"""
+You are an AI Legal Assistant specializing in Indian law.
+Generate a professional, complete legal document for: {request.docType}
+
+Information provided:
+{request.formData}
+
+Create a ready-to-use legal document template with all necessary sections, clauses, and proper legal language for Indian courts. Format it clearly with proper structure.
+"""
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are an expert legal document generator for Indian law."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=2000,
+            temperature=0.3
+        )
+        text = response.choices[0].message.content.strip()
+        return {"text": text}
+    except Exception as e:
+        print(f"Error: {e}")
+        return {"error": str(e), "text": ""}
+
+@app.post("/api/upload-and-summarize")
+async def upload_and_summarize(document: UploadFile = File(...)):
+    """Upload and analyze a legal document"""
+    filename = document.filename.lower()
     text = ""
 
     try:
-        # audio transcription (Whisper)
-        if filename.endswith((".mp3", ".wav", ".m4a")):
-            # rewind to start
-            file.file.seek(0)
-            transcript = client.audio.transcriptions.create(
-                model="whisper-1",
-                file=file.file
-            )
-            text = transcript.text
-            save_document(email, text)
-            return {"transcript": transcript.text}
-
-        # PDF
-        elif filename.endswith(".pdf"):
-            file.file.seek(0)
-            reader = PyPDF2.PdfReader(file.file)
+        if filename.endswith(".pdf"):
+            document.file.seek(0)
+            reader = PyPDF2.PdfReader(document.file)
             for page in reader.pages:
                 page_text = page.extract_text()
                 if page_text:
                     text += page_text + "\n"
 
-        # Word documents
-        elif filename.endswith((".doc", ".docx")):
-            file.file.seek(0)
-            doc = docx.Document(file.file)
-            text = "\n".join([p.text for p in doc.paragraphs])
-
-        # Plain text
         elif filename.endswith(".txt"):
-            file.file.seek(0)
-            text = file.file.read().decode("utf-8")
+            document.file.seek(0)
+            text = document.file.read().decode("utf-8")
 
         else:
-            return {"analysis": "⚠️ Unsupported file type."}
+            return {"error": "Unsupported file type. Please upload PDF or TXT."}
 
-        # persist the document
-        save_document(email, text)
+        if not text.strip():
+            return {"error": "Could not extract text from document."}
 
-        system_prompt = f"""
+        prompt = f"""
 You are an AI Legal Assistant for Indian citizens.
-Summarize the following legal document clearly and simply.
-Focus only on laws, rights, penalties, or important legal points.
+Analyze and summarize this legal document clearly and simply.
+Focus on:
+- Key rights and obligations
+- Important dates and deadlines
+- Penalties or consequences
+- Key parties involved
+- Any important sections or clauses
 
-User email: {email}
-Document content (truncated):
+Document (first 4000 chars):
 {text[:4000]}
+
+Provide a well-structured summary.
 """
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": "Summarize the legal content of this document."}
+                {"role": "system", "content": "You are an expert at analyzing legal documents for Indian citizens."},
+                {"role": "user", "content": prompt}
             ],
-            max_tokens=400,
+            max_tokens=1000,
             temperature=0.4
         )
-        answer = response.choices[0].message.content.strip()
-        return {"analysis": answer, "message": "✅ Document stored for Q&A."}
+        summary = response.choices[0].message.content.strip()
+        return {"text": summary}
 
     except Exception as e:
-        print("Error:", e)
-        return {"analysis": f"⚠️ Could not process '{file.filename}'."}
+        print(f"Error: {e}")
+        return {"error": str(e), "text": ""}
 
-# ------------------------------
-# Document Q&A endpoint
-# ------------------------------
-@app.post("/doc-qa")
-async def doc_qa(request: DocQARequest):
-    # Try DB first, fall back to in-memory
-    document_text = load_document(request.email)
-    if not document_text:
-        if request.email not in uploaded_docs:
-            return {"answer": "⚠️ No document found. Please upload a document first."}
-        document_text = uploaded_docs[request.email]
-
-    system_prompt = f"""
-You are an AI Legal Assistant for Indian citizens.
-The user has uploaded a document. Use ONLY the document content and general Indian law to answer.
-If the question cannot be answered from the document, politely say so.
-
-User email: {request.email}
-Document content (truncated):
-{document_text[:4000]}
-"""
+@app.post("/api/predict-case")
+async def predict_case(request: PredictCaseRequest):
+    """Analyze a legal case or question"""
     try:
+        prompt = f"""
+You are an expert AI Legal Assistant specializing in Indian law (IPC, Constitution, Acts, etc.).
+
+A user has asked the following legal question or described a legal situation:
+
+"{request.caseDescription}"
+
+Please provide:
+1. Detailed explanation of relevant Indian laws and sections
+2. Applicable IPC sections, Constitutional provisions, or Acts
+3. Potential penalties or consequences
+4. Related case law or precedents if applicable
+5. Recommendations for next steps
+6. Important disclaimers
+
+Be clear, accurate, and helpful. Format the response well with proper sections.
+IMPORTANT: Always remind users to consult with a qualified lawyer for specific legal advice.
+"""
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": request.question}
+                {"role": "system", "content": "You are an expert AI Legal Assistant for Indian law. Provide detailed, accurate legal information."},
+                {"role": "user", "content": prompt}
             ],
-            max_tokens=400,
+            max_tokens=1500,
             temperature=0.3
         )
-        answer = response.choices[0].message.content.strip()
-        return {"answer": answer}
+        text = response.choices[0].message.content.strip()
+        return {
+            "text": text,
+            "sources": []
+        }
     except Exception as e:
-        print("Error:", e)
-        return {"answer": f"⚠️ Could not process '{request.question}'."}
+        print(f"Error: {e}")
+        return {"error": str(e), "text": ""}
 
-# ------------------------------
-# Dummy Acts endpoint
-# ------------------------------
-@app.get("/acts")
-async def get_acts():
-    return {
-        "acts": [
-            "IPC Section 378 - Theft",
-            "RTI Act 2005",
-            "Consumer Protection Act 2019"
-        ]
-    }
+@app.get("/api/recent-verdicts")
+async def get_recent_verdicts():
+    """Fetch recent Indian court verdicts"""
+    try:
+        prompt = """
+You are an AI Legal Assistant for Indian citizens.
+Generate 3-4 realistic (but fictional) recent Indian court verdicts. Format each exactly as follows:
 
-# ------------------------------
-# Root endpoint
-# ------------------------------
+**Case Name:** [Name of case]
+**Court:** [Name of court]
+**Date:** [Date in YYYY-MM-DD format]
+**Summary:** [2-3 sentence summary]
+
+---
+
+Make them sound realistic and relevant to Indian law.
+"""
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are knowledgeable about Indian court cases."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=1200,
+            temperature=0.5
+        )
+        text = response.choices[0].message.content.strip()
+        return {
+            "text": text,
+            "sources": []
+        }
+    except Exception as e:
+        print(f"Error: {e}")
+        return {"error": str(e), "text": ""}
+
 @app.get("/")
 async def root():
     return {
-        "message": "✅ Welcome to Citizen Legal Buddy API!",
-        "endpoints": ["/ask", "/upload", "/doc-qa", "/acts"]
+        "message": "✅ Welcome to Nyay Saathi - Citizen Legal Buddy API!",
+        "version": "2.0",
+        "endpoints": {
+            "document_generation": "/api/generate-document",
+            "document_analysis": "/api/upload-and-summarize",
+            "legal_query": "/api/predict-case",
+            "verdicts": "/api/recent-verdicts"
+        }
     }

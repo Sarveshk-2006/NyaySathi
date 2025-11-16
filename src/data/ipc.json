@@ -1,0 +1,289 @@
+[
+  {
+    "section": "34",
+    "title": "Acts done by several persons in furtherance of common intention",
+    "short": "Common intention",
+    "description": "When a criminal act is done by several persons in furtherance of the common intention of all, each of such persons is liable for that act in the same manner as if it were done by him alone.",
+    "keywords": ["common intention","joint liability","criminal act"]
+  },
+  {
+    "section": "35",
+    "title": "Act of a person who, by reason of intoxication or insanity, etc., supposes himself to be acting under legal authority",
+    "short": "Act under legal authority",
+    "description": "Nothing is an offence which is done by a person who, at the time of doing it, by reason of intoxication caused without his knowledge by another, or by reason of sudden madness or epilepsy, etc.",
+    "keywords": ["intoxication","insanity","legal authority"]
+  },
+  {
+    "section": "51",
+    "title": "Committing culpable homicide by act endangering life or personal safety",
+    "short": "Culpable homicide",
+    "description": "Whoever causes death by doing any rash or negligent act which does not amount to culpable homicide, shall be punished with imprisonment of either description for a term which may extend to six months, or with fine which may extend to two hundred and fifty rupees.",
+    "keywords": ["culpable homicide","negligence","death"]
+  },
+  {
+    "section": "143",
+    "title": "Unlawful assembly",
+    "short": "Unlawful assembly",
+    "description": "An assembly of five or more persons is designated an unlawful assembly, if the common object of the persons composing that assembly is - (a) to overawe by criminal force, or show of criminal force, the Central or State Government or Parliament or the Legislature of any State, or any public servant in the exercise of the lawful power of such public servant.",
+    "keywords": ["unlawful assembly","mob","criminal force"]
+  },
+  {
+    "section": "144",
+    "title": "Committing affray",
+    "short": "Affray",
+    "description": "If an unlawful assembly after it has been commanded to disperse does not disperse, the members thereof shall be guilty of committing an affray.",
+    "keywords": ["affray","unlawful assembly","riot"]
+  },
+  {
+    "section": "147",
+    "title": "Rioting",
+    "short": "Rioting",
+    "description": "Whoever is guilty of rioting, shall be punished with imprisonment of either description for a term which may extend to six months, or with fine which may extend to two hundred and fifty rupees, or with both.",
+    "keywords": ["rioting","violence","mob"]
+  },
+  {
+    "section": "148",
+    "title": "Rioting, armed with deadly weapon",
+    "short": "Armed rioting",
+    "description": "If the offence of rioting is committed by an armed mob or by persons armed with deadly weapons, punishment shall be rigorous imprisonment for a term which may extend to two years.",
+    "keywords": ["armed rioting","deadly weapon","violence"]
+  },
+  {
+    "section": "149",
+    "title": "Every member of unlawful assembly guilty of offence committed in prosecution of common object",
+    "short": "Member of unlawful assembly",
+    "description": "If an offence is committed by any member of an unlawful assembly in prosecution of the common object of that assembly, or such an offence as the members of that assembly knew to be likely to be committed in prosecution of that object, every person who at the time of committing that offence was a member of the same assembly is guilty of that offence.",
+    "keywords": ["unlawful assembly","common object"]
+  },
+  {
+    "section": "302",
+    "title": "Murder",
+    "short": "Punishment for murder",
+    "description": "Whoever commits murder shall be punished with death, or imprisonment for life, and shall also be liable to fine.",
+    "keywords": ["murder","homicide","death","capital punishment"]
+  },
+  {
+    "section": "304",
+    "title": "Culpable homicide not amounting to murder",
+    "short": "Culpable homicide",
+    "description": "Whoever causes death by doing any rash or negligent act not amounting to culpable homicide, shall be punished with imprisonment of either description for a term which may extend to two years, or with fine which may extend to one thousand rupees, or with both.",
+    "keywords": ["culpable homicide","negligent","rash act"]
+  },
+  {
+    "section": "304A",
+    "title": "Causing death by negligence",
+    "short": "Death by negligence",
+    "description": "Whoever causes death by act by rash or negligent act not amounting to culpable homicide, shall be punished with imprisonment of either description for a term which may extend to six months, or with fine which may extend to two hundred and fifty rupees, or with both.",
+    "keywords": ["negligence","death","accident"]
+  },
+  {
+    "section": "307",
+    "title": "Attempt to murder",
+    "short": "Attempt to murder",
+    "description": "Whoever does any act with such intention or knowledge, and under such circumstances that, if he by that act caused death, he would be guilty of murder, shall be punished with imprisonment of either description for a term which may extend to life, or with fine which may extend to one thousand rupees, or with both.",
+    "keywords": ["attempt to murder","attempted homicide"]
+  },
+  {
+    "section": "323",
+    "title": "Voluntarily causing hurt",
+    "short": "Causing hurt",
+    "description": "Whoever, except in the case provided by section 334, voluntarily causes hurt, shall be punished with imprisonment of either description for a term which may extend to three months, or with fine which may extend to two hundred and fifty rupees, or with both.",
+    "keywords": ["hurt","voluntary","assault"]
+  },
+  {
+    "section": "325",
+    "title": "Voluntarily causing grievous hurt",
+    "short": "Causing grievous hurt",
+    "description": "Whoever voluntarily causes grievous hurt shall be punished with imprisonment of either description for a term which may extend to two years, or with fine which may extend to one thousand rupees, or with both.",
+    "keywords": ["grievous hurt","assault","injury"]
+  },
+  {
+    "section": "335",
+    "title": "Voluntarily causing hurt to deter public servant from duty",
+    "short": "Hurt to deter public servant",
+    "description": "Whoever voluntarily causes hurt to any person, being a public servant in the discharge or attempt to discharge his official duty, knowing or believing that such hurt has been caused on account of such person being or having been a public servant.",
+    "keywords": ["public servant","official duty","hurt"]
+  },
+  {
+    "section": "336",
+    "title": "Act endangering life or personal safety",
+    "short": "Endangering life",
+    "description": "Whoever does any act so rashly or negligently as to endanger human life or personal safety shall be punished with imprisonment of either description for a term which may extend to three months, or with fine which may extend to two hundred and fifty rupees, or with both.",
+    "keywords": ["rash","negligent","endangering"]
+  },
+  {
+    "section": "370",
+    "title": "Trafficking of persons",
+    "short": "Human trafficking",
+    "description": "Whoever recruits, transports, transfers, harbours, adopts, exchanges, buys, sells, or hires any person or in any manner facilitates the trafficking of that person, knowing that such person is to be put or has been put to forced labour or slavery.",
+    "keywords": ["trafficking","human trafficking","slavery"]
+  },
+  {
+    "section": "376",
+    "title": "Rape",
+    "short": "Punishment for rape",
+    "description": "A person convicted of rape shall be punished with rigorous imprisonment for a term which shall not be less than seven years, but which may extend to imprisonment for life, and shall also be liable to fine.",
+    "keywords": ["rape","sexual assault","sexual offence"]
+  },
+  {
+    "section": "377",
+    "title": "Unnatural offences",
+    "short": "Unnatural offences",
+    "description": "Whoever voluntarily has carnal intercourse against the order of nature shall be punished with life imprisonment, or with imprisonment of either description for a term which may extend to fourteen years, and shall also be liable to fine.",
+    "keywords": ["unnatural offence","sodomy"]
+  },
+  {
+    "section": "378",
+    "title": "Theft",
+    "short": "Punishment for theft",
+    "description": "Whoever, intending to take dishonestly any movable property out of the possession of any person without that person's consent, moves that property in order by that movement to effect his intention, is said to commit theft.",
+    "keywords": ["theft","stealing","property"]
+  },
+  {
+    "section": "379",
+    "title": "Punishment for theft",
+    "short": "Theft punishment",
+    "description": "Whoever commits theft shall, for the first offence, be punished with imprisonment of either description for a term which may extend to three years, or with fine which may extend to two hundred and fifty rupees, or with both.",
+    "keywords": ["theft","punishment","stealing"]
+  },
+  {
+    "section": "380",
+    "title": "Theft in dwelling house or other building",
+    "short": "House theft",
+    "description": "Whoever commits theft in any building which is then being used as a dwelling-house or as a place for worship or as a place for the custody of property, shall be punished with imprisonment of either description for a term which may extend to seven years, and shall also be liable to fine.",
+    "keywords": ["house theft","burglary","dwelling"]
+  },
+  {
+    "section": "392",
+    "title": "Punishment for dacoity",
+    "short": "Dacoity",
+    "description": "Whoever commits dacoity shall be punished with imprisonment of either description for a term which may extend to life, or with fine, or with both.",
+    "keywords": ["dacoity","armed robbery","banditry"]
+  },
+  {
+    "section": "397",
+    "title": "Punishment for robbery",
+    "short": "Robbery",
+    "description": "Whoever commits robbery shall be punished with rigorous imprisonment for a term which may extend to seven years, and shall also be liable to fine.",
+    "keywords": ["robbery","theft","armed robbery"]
+  },
+  {
+    "section": "402",
+    "title": "Punishment for belonging to gang of dacoits",
+    "short": "Gang of dacoits",
+    "description": "Whoever, being one of five or more persons who have agreed together that one or more of them shall commit dacoity, commits in pursuance of that agreement any act preparatory to the commission of dacoity, shall be punished with imprisonment of either description for a term which may extend to two years.",
+    "keywords": ["dacoity","gang","criminal association"]
+  },
+  {
+    "section": "406",
+    "title": "Punishment for criminal breach of trust",
+    "short": "Breach of trust",
+    "description": "Whoever, being in any manner entrusted with property, or with any dominion over property in his capacity of a public servant or in the way of his business as a banker, merchant, factor, broker, attorney or agent, commits criminal breach of trust in respect of that property.",
+    "keywords": ["breach of trust","embezzlement","misappropriation"]
+  },
+  {
+    "section": "420",
+    "title": "Cheating and dishonestly inducing delivery of property",
+    "short": "Cheating",
+    "description": "Whoever cheats and thereby dishonestly induces any person to deliver any property to any person, or to make, alter or destroy the whole or any part of a valuable security, shall be punished with imprisonment of either description for a term which may extend to seven years, and shall also be liable to fine.",
+    "keywords": ["cheating","fraud","deception"]
+  },
+  {
+    "section": "438",
+    "title": "Causing hurt by means of poison, etc.",
+    "short": "Hurt by poison",
+    "description": "Whoever causes hurt by administering any poison or noxious substance or by exerting any noxious force or thing to or upon the body, person, mind or senses, knowing or having reason to believe that he is thereby likely to cause hurt, shall be punished with imprisonment which may extend to six months.",
+    "keywords": ["poison","toxic","harm"]
+  },
+  {
+    "section": "460",
+    "title": "Definition of criminal intimidation",
+    "short": "Criminal intimidation",
+    "description": "An offence is designated criminal intimidation if it is committed by an individual intentionally causing fear of injury or loss, threatening use of force, or repeated insistence after rejection.",
+    "keywords": ["intimidation","threat","fear"]
+  },
+  {
+    "section": "469",
+    "title": "Forgery of valuable security",
+    "short": "Forgery",
+    "description": "Whoever forges a valuable security or an official seal knowing that he is forging that valuable security or seal shall be punished with life imprisonment, or with imprisonment of either description for a term which may extend to fourteen years.",
+    "keywords": ["forgery","document fraud","fake document"]
+  },
+  {
+    "section": "471",
+    "title": "Using a forged document",
+    "short": "Using forged document",
+    "description": "Whoever fraudulently or dishonestly uses as genuine any document which he knows or has reason to believe to be forged, shall be punished with imprisonment of either description for a term which may extend to seven years, and shall also be liable to fine.",
+    "keywords": ["forged document","fraud","fake document"]
+  },
+  {
+    "section": "493",
+    "title": "Punishment for enticing or taking away or detaining with criminal intent a married woman",
+    "short": "Criminal enticing",
+    "description": "Whoever entices or takes away any woman who is and to his knowledge is the wife of any other man, with intent that she may have illicit intercourse, or knowing it to be likely that she will have illicit intercourse with him or with some other person.",
+    "keywords": ["adultery","criminal enticing"]
+  },
+  {
+    "section": "494",
+    "title": "Marrying again during lifetime of husband or wife",
+    "short": "Bigamy",
+    "description": "Whoever, having a husband or wife living, marries in any case in which such marriage is void by reason of its taking place during the life of such husband or wife, shall be punished with imprisonment of either description for a term which may extend to seven years, and shall also be liable to fine.",
+    "keywords": ["bigamy","polygamy","second marriage"]
+  },
+  {
+    "section": "497",
+    "title": "Adultery",
+    "short": "Adultery",
+    "description": "Whoever has sexual intercourse with a person who is and whom he knows or has reason to believe to be the wife of another man, without the consent or connivance of that man, such sexual intercourse not amounting to the offence of rape.",
+    "keywords": ["adultery","sexual intercourse"]
+  },
+  {
+    "section": "498",
+    "title": "Enticing or taking away or detaining with criminal intent a married woman",
+    "short": "Criminal enticing",
+    "description": "Whoever entices or takes away any woman who is and to his knowledge is the wife of any other man, with intent that she may have illicit intercourse or with him or with some other person.",
+    "keywords": ["enticing","criminal intent"]
+  },
+  {
+    "section": "498A",
+    "title": "Husband or relative of husband of a woman subjecting her to cruelty",
+    "short": "Cruelty by husband or relatives",
+    "description": "Whoever, being the husband or the relative of the husband of a woman, subjects such woman to cruelty shall be punished with imprisonment for a term which may extend to three years and shall also be liable to fine.",
+    "keywords": ["cruelty","domestic violence","dowry"]
+  },
+  {
+    "section": "500",
+    "title": "Defamation",
+    "short": "Defamation",
+    "description": "Whoever, by words either spoken or intended to be read, or by signs or by visible representations, makes or publishes any imputation concerning any person intending to harm, or knowing or having reason to believe that such imputation will harm, the reputation of such person.",
+    "keywords": ["defamation","libel","slander"]
+  },
+  {
+    "section": "504",
+    "title": "Intentional insult with intent to cause breach of peace",
+    "short": "Insult causing breach",
+    "description": "Whoever intentionally insults, and thereby causes or knows to be likely to cause any person to break the peace or to commit any other offence, shall be punished with imprisonment of either description for a term which may extend to two years, or with fine which may extend to five hundred rupees.",
+    "keywords": ["insult","breach of peace"]
+  },
+  {
+    "section": "505",
+    "title": "Statements conducing to public mischief",
+    "short": "Public mischief",
+    "description": "Whoever makes, publishes or circulates any statement, rumour or report, with intent to cause, or knowing that it is likely to cause, any officer of the Government or of a local authority to receive false information.",
+    "keywords": ["public mischief","false information","rumor"]
+  },
+  {
+    "section": "506",
+    "title": "Punishment for criminal intimidation",
+    "short": "Criminal intimidation",
+    "description": "Whoever commits the offence of criminal intimidation shall be punished with imprisonment of either description for a term which may extend to two years, or with fine which may extend to one thousand rupees, or with both.",
+    "keywords": ["intimidation","threat","extortion"]
+  },
+  {
+    "section": "511",
+    "title": "Punishment for attempting to commit offences punishable with life or 7+ years imprisonment",
+    "short": "Attempt to commit crime",
+    "description": "Whoever attempts to commit an offence punishable by this Code with life imprisonment or seven or more years imprisonment shall be punished with imprisonment of the same description for a term which may extend to one-fourth of the longest term provided for that offence or seven years.",
+    "keywords": ["attempt","crime","criminal attempt"]
+  }
+]

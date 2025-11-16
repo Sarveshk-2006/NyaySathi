@@ -1,0 +1,277 @@
+[
+  {
+    "id": "fundamental-rights",
+    "category": "Fundamental Rights",
+    "title": "Fundamental Rights (Part III, Articles 12-35)",
+    "description": "Constitutional guarantees protecting citizens' basic freedoms and rights.",
+    "rights": [
+      {
+        "article": "Article 14",
+        "title": "Right to Equality",
+        "description": "The State shall not deny to any person equality before the law or equal protection of the law within the territory of India.",
+        "implications": [
+          "No discrimination based on caste, religion, sex, or place of birth",
+          "Equal access to public facilities and services",
+          "Non-discriminatory laws and policies"
+        ],
+        "examples": [
+          "Kesavananda Bharati v. State of Kerala - Property rights case",
+          "Mandal Commission case - Right to reservation",
+          "AIIMS v. Shafiq Ahmed - Right to equality in healthcare"
+        ]
+      },
+      {
+        "article": "Article 15",
+        "title": "Prohibition of Discrimination on Grounds of Religion, Race, Caste, Sex or Place of Birth",
+        "description": "No citizen shall be discriminated against solely on grounds of religion, race, caste, sex or place of birth.",
+        "implications": [
+          "Government cannot discriminate in public service",
+          "Cannot deny entry to public places based on protected characteristics",
+          "Cannot restrict access to educational institutions",
+          "Exceptions: State can make provisions for SCs, STs, and OBCs"
+        ],
+        "examples": [
+          "Indra Sawhney v. Union of India - Backward classes reservation",
+          "Joseph Shine v. Union of India - Decriminalization case",
+          "Bhatnagar v. State of Uttar Pradesh - Religious discrimination"
+        ]
+      },
+      {
+        "article": "Article 16",
+        "title": "Equality of Opportunity in Matters of Public Employment",
+        "description": "No citizen shall, on grounds only of religion, race, caste, sex, descent, place of birth, residence or any of them, be ineligible for, or discriminated against in relation to, any employment or office under the State.",
+        "implications": [
+          "Equal opportunity for public sector jobs",
+          "No discrimination in government employment",
+          "Reservation for SCs, STs, OBCs permitted",
+          "No religious test for public office"
+        ],
+        "examples": [
+          "Balaji v. State of Mysore - Reservation eligibility",
+          "State of Kerala v. N.M. Thomas - Seniority rules",
+          "G. Narayana Rao v. Union of India - Promotion and reservation"
+        ]
+      },
+      {
+        "article": "Article 19",
+        "title": "Protection of Certain Rights Regarding Freedom of Speech, etc.",
+        "description": "All citizens have the right to freedom of speech and expression, freedom to assemble peacefully, freedom to form associations, freedom to move freely throughout India, freedom to reside and settle, and freedom to practice any profession or trade.",
+        "implications": [
+          "Freedom of speech and expression",
+          "Freedom of peaceful assembly",
+          "Freedom to form associations or unions",
+          "Freedom of movement within India",
+          "Freedom to reside and settle",
+          "Freedom to practice profession or trade",
+          "All subject to reasonable restrictions"
+        ],
+        "examples": [
+          "Romesh Thappar v. State of Madras - Freedom of speech",
+          "Indian Express v. Union of India - Press freedom",
+          "Asha Parekh v. State of Gujarat - Right to peaceful assembly",
+          "Hamdard Dawakhana v. Union of India - Right to business"
+        ]
+      },
+      {
+        "article": "Article 21",
+        "title": "Protection of Life and Personal Liberty",
+        "description": "No person shall be deprived of his life or personal liberty except according to procedure established by law.",
+        "implications": [
+          "Right to life and personal liberty",
+          "Interpreted to include right to dignity, health, education",
+          "Protection against arbitrary detention",
+          "Due process of law required",
+          "Expands beyond just physical safety"
+        ],
+        "examples": [
+          "Menaka Gandhi v. Union of India - Right to life expansion",
+          "Muller v. Oregon - Working conditions and life",
+          "D.K. Basu v. State of West Bengal - Custodial violence",
+          "Virender Gaur v. State - Right to clean environment"
+        ]
+      },
+      {
+        "article": "Article 22",
+        "title": "Protection Against Arrest and Detention",
+        "description": "No person who is arrested shall be detained in custody without being informed of the grounds for arrest, nor shall he be denied the right to consult and to be defended by a legal practitioner.",
+        "implications": [
+          "Right to know grounds of arrest",
+          "Right to legal representation",
+          "Protection against preventive detention",
+          "No torture or third-degree methods",
+          "Right to medical examination"
+        ],
+        "examples": [
+          "Ajay Maken v. Union of India - Preventive detention",
+          "Sunil Batra v. Delhi Administration - Prison conditions",
+          "D.K. Basu v. State of West Bengal - Arrest procedures",
+          "S. Varadarajan v. Government of India - Torture prevention"
+        ]
+      },
+      {
+        "article": "Article 25",
+        "title": "Freedom of Religion",
+        "description": "Subject to public order, morality and health and to the other provisions of this Part, all persons are equally entitled to freedom of conscience and the right freely to profess, practise and propagate religion.",
+        "implications": [
+          "Freedom of conscience and belief",
+          "Right to profess any religion",
+          "Right to practice religion",
+          "Right to propagate religion",
+          "Subject to public order and morality"
+        ],
+        "examples": [
+          "Church of God in India v. State of Madras - Religious freedom",
+          "Adi Sankaracharya Devasthanams v. State - Temple rights",
+          "S.R. Bommai v. Union of India - Secular principles",
+          "Roman Catholic Missionary Society v. State - Conversion rights"
+        ]
+      },
+      {
+        "article": "Article 29",
+        "title": "Protection of Interests of Minorities",
+        "description": "Any section of the citizens residing in the territory of India having a distinct language, script or culture of its own shall have the right to conserve the same.",
+        "implications": [
+          "Minorities can preserve their culture",
+          "Right to establish educational institutions",
+          "No discrimination in aided institutions",
+          "Language and script protection"
+        ],
+        "examples": [
+          "Ahmedabad Saint Xavier's Society v. State of Gujarat - Minority institutions",
+          "Rev. Sidhajbhai v. State of Gujarat - Minority education",
+          "Michael Pallihakkara v. Union of India - Minority rights"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "directive-principles",
+    "category": "Directive Principles of State Policy",
+    "title": "Directive Principles of State Policy (Part IV, Articles 36-51)",
+    "description": "Guidelines for state action in framing laws and policies; not directly enforceable but fundamental to governance.",
+    "rights": [
+      {
+        "article": "Article 39",
+        "title": "State Policy on Health, Education, and Living Standards",
+        "description": "The State shall direct its policy towards securing adequate means of livelihood for all citizens, free medical aid, compulsory education, and social security.",
+        "implications": [
+          "Right to adequate livelihood",
+          "Free medical aid",
+          "Compulsory education",
+          "Social security and insurance",
+          "Living standards improvement"
+        ],
+        "examples": [
+          "AIIMS v. Shafiq Ahmed - Right to health",
+          "Unni Krishnan v. State of Andhra Pradesh - Right to education",
+          "Jacob Mathew v. State of Punjab - Right to medical care"
+        ]
+      },
+      {
+        "article": "Article 41",
+        "title": "Right to Work, Education and Public Assistance",
+        "description": "The State shall, within the limits of its economic capacity and development, make effective provision for securing the right to work, to education and to public assistance in cases of unemployment, old age, sickness and disablement.",
+        "implications": [
+          "Right to work",
+          "Right to education",
+          "Social security benefits",
+          "Unemployment assistance",
+          "Old age pensions",
+          "Health insurance"
+        ],
+        "examples": [
+          "Paschim Banga Khet Mazdoor Samity v. State of West Bengal - Right to work",
+          "Olga Tellis v. Bombay Municipal Corporation - Right to livelihood",
+          "M.C. Mehta v. Union of India - Environmental rights"
+        ]
+      },
+      {
+        "article": "Article 45",
+        "title": "Duty of State to Provide Free and Compulsory Education",
+        "description": "The State shall endeavor to provide free and compulsory education to all children until they attain the age of fourteen years.",
+        "implications": [
+          "Universal education access",
+          "Free primary education",
+          "Compulsory education",
+          "Educational infrastructure",
+          "Teacher training and facilities"
+        ],
+        "examples": [
+          "Unni Krishnan v. State of Andhra Pradesh - Right to free education",
+          "J.P. Unangst v. State of Haryana - Educational facilities",
+          "M.R. Pasricha School v. Union of India - Right to education"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "rights-of-citizens",
+    "category": "Special Rights",
+    "title": "Rights of Citizens and Non-Citizens",
+    "description": "Additional protections and rights available to Indian citizens.",
+    "rights": [
+      {
+        "article": "Article 32",
+        "title": "Right to Constitutional Remedies",
+        "description": "The right to move the Supreme Court by appropriate proceedings for the enforcement of rights conferred by the Constitution.",
+        "implications": [
+          "Right to petition Supreme Court",
+          "Writ jurisdiction",
+          "Habeas corpus, mandamus, prohibition, quo warranto, certiorari",
+          "Enforcement of fundamental rights",
+          "Direct access to justice"
+        ],
+        "examples": [
+          "Maneka Gandhi v. Union of India - Constitutional remedies",
+          "Maruti v. Union of India - Access to justice",
+          "People's Union for Democratic Rights v. Union of India - Public interest litigation"
+        ]
+      },
+      {
+        "article": "Article 226",
+        "title": "Right to Constitutional Remedies by High Courts",
+        "description": "Every High Court shall have the power, throughout its territorial jurisdiction, to issue directions, orders or writs for the enforcement of rights.",
+        "implications": [
+          "High Court writ jurisdiction",
+          "Enforcement against state and government",
+          "Alternative to Supreme Court",
+          "Regional access to justice",
+          "Speedy remedies"
+        ],
+        "examples": [
+          "S.P. Sampath Kumar v. Union of India - High Court jurisdiction",
+          "Ratlam Municipality v. Vardhichand - Environmental remedies",
+          "Shiv Sena v. Narendra Rane - Electoral remedies"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "rights-and-duties",
+    "category": "Fundamental Duties",
+    "title": "Fundamental Duties (Article 51A)",
+    "description": "Constitutional obligations of citizens regarding the nation and fellow citizens.",
+    "rights": [
+      {
+        "article": "Article 51A",
+        "title": "Fundamental Duties of Citizens",
+        "description": "It shall be the duty of every citizen of India to abide by the Constitution, respect its ideals, cherish national symbols, safeguard sovereignty, strive for excellence in education, and protect environment and wildlife.",
+        "implications": [
+          "Respect Constitution and laws",
+          "Value national symbols (flag, anthem)",
+          "Safeguard sovereignty and unity",
+          "Promote harmony and brotherhood",
+          "Advance scientific temper",
+          "Preserve environment",
+          "Protect monuments and natural heritage",
+          "Moral obligation to nation"
+        ],
+        "examples": [
+          "S. Khushboo v. Kannathasan - Right to express but duty to society",
+          "Shruti v. Amrit Banerjee - National solidarity",
+          "Res Ipsa Loquitur - Environmental duties"
+        ]
+      }
+    ]
+  }
+]

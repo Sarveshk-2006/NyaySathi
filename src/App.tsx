@@ -18,8 +18,10 @@ import {
   Scale, 
   CalendarDays, 
   Landmark,
+  MessageSquare,
   ChevronRight,
-  // --- Icons for the homepage ---
+  LifeBuoy,
+  History,
   Mic,
   Search,
   Shield,
@@ -27,23 +29,23 @@ import {
   Zap,
   Globe,
   FileSearch,
-  Upload
+  Upload,
+  Bookmark
 } from 'lucide-react';
-import { db, auth } from './firebase'; // Import from firebase.ts
-import { collection, query, onSnapshot, QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
-import { useAuth } from './AuthContext'; // Import the login tracker
+import { db, auth } from './firebase';
+import { collection, query, onSnapshot, QueryDocumentSnapshot, DocumentData, addDoc, serverTimestamp, orderBy, deleteDoc, doc } from 'firebase/firestore';
+import { useAuth } from './contexts/AuthContext';
 import { 
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword, 
   signOut 
 } from 'firebase/auth';
-import jsPDF from 'jspdf'; // Import the PDF library
+import jsPDF from 'jspdf';
+import ipcData from './data/ipc.json';
+import penaltyData from './data/penalties.json';
+import casesData from './data/cases.json';
+import constitutionalRightsData from './data/constitutional-rights.json';
 
-// --- STYLING NOTE ---
-// This new design uses a consistent, modern color palette (bg-slate-50, text-slate-900, text-blue-600)
-// and applies premium styling (shadows, rounded-lg, transitions) to all components.
-
-// --- Reusable Disclaimer Component ---
 const LegalDisclaimer = () => (
   <div className="bg-yellow-50 border border-yellow-300 text-yellow-800 p-4 rounded-lg my-4" role="alert">
     <div className="flex">
@@ -62,38 +64,30 @@ const LegalDisclaimer = () => (
   </div>
 );
 
-// ==========================================================
-// ** NEW UPGRADED HOME PAGE **
-// ==========================================================
 const HomePage = ({ onNavClick }: { onNavClick: (page: string) => void }) => {
-  
-  // --- Data for Feature Cards (from your screenshots) ---
   const features1 = [
     { title: "AI-Powered Explanations", description: "Complex legal jargon transformed into crystal-clear explanations.", icon: "Chat", color: "blue", action: () => onNavClick('predict') },
-    { title: "Multi-Language Voice", description: "Speak naturally in Hindi, English, or 15+ regional languages.", icon: "Mic", color: "green", action: null },
-    // ** UPDATED: This now links to 'analyze' which is the new Analyzer page **
+    { title: "Multi-Language Voice", description: "Speak naturally in Hindi, English, or 15+ regional languages.", icon: "Mic", color: "green", action: () => onNavClick('voice') },
     { title: "Smart Document Analysis", description: "Upload legal documents and receive AI-generated summaries.", icon: "File", color: "purple", action: () => onNavClick('analyze') },
-    { title: "Instant IPC Lookup", description: "Lightning-fast access to 500+ Indian Penal Code sections.", icon: "Search", color: "orange", action: null },
-    { title: "Penalty Calculator", description: "Precise penalty information with case precedents.", icon: "Scale", color: "red", action: null },
-    { title: "Case Law Database", description: "Access to 10,000+ legal precedents with AI-curated cases.", icon: "Book", color: "indigo", action: () => onNavClick('predict') },
+    { title: "Instant IPC Lookup", description: "Lightning-fast access to 500+ Indian Penal Code sections.", icon: "Search", color: "orange", action: () => onNavClick('ipc') },
+    { title: "Penalty Calculator", description: "Precise penalty information with case precedents.", icon: "Scale", color: "red", action: () => onNavClick('penalties') },
+    { title: "Case Law Database", description: "Access to 10,000+ legal precedents with AI-curated cases.", icon: "Book", color: "indigo", action: () => onNavClick('cases') },
   ];
   
   const features2 = [
     { title: "Constitutional Rights", description: "Comprehensive guide to fundamental rights.", icon: "Shield", color: "teal", action: null },
     { title: "24/7 AI Assistant", description: "Round-the-clock legal guidance with sub-2-second responses.", icon: "Clock", color: "pink", action: () => onNavClick('predict') },
-    { title: "Legal Reasoning", description: "Advanced AI that understands context and provides logical chains.", icon: "Brain", color: "blue", action: null },
+    { title: "Bookmarks & History", description: "Save and organize your favorite legal references.", icon: "BookUser", color: "indigo", action: () => onNavClick('bookmarks') },
+    { title: "Document Generator", description: "Generate customized legal documents with AI assistance.", icon: "Brain", color: "orange", action: () => onNavClick('documents') },
     { title: "Instant Alerts", description: "Real-time notifications about legal updates and deadlines.", icon: "Zap", color: "yellow", action: null },
-    { title: "Multi-Jurisdiction", description: "Support for Central, State, and Local laws.", icon: "Globe", color: "green", action: null },
     { title: "Community Forum", description: "Connect with legal experts and citizens for collaboration.", icon: "Users", color: "purple", action: null },
   ];
 
-  // --- Reusable Feature Card Component ---
   const FeatureCard = ({ title, description, icon, color, action }: any) => {
-    // --- THIS OBJECT IS NOW FIXED ---
     const icons: { [key: string]: React.ElementType } = {
       Chat: FileText,
       Mic: Mic,
-      File: FileSearch, // Updated Icon
+      File: FileSearch,
       Search: Search,
       Scale: Scale,
       Book: BookUser,
@@ -153,10 +147,8 @@ const HomePage = ({ onNavClick }: { onNavClick: (page: string) => void }) => {
     );
   };
 
-  // --- Main HomePage Layout ---
   return (
-    <div className="animate-fade-in space-y-24 py-10">
-      {/* 1. Hero Section */}
+    <div className="space-y-24 py-10">
       <section className="text-center">
         <h1 className="text-5xl md:text-6xl font-extrabold text-slate-900 mb-6">
           Decode Indian Law with
@@ -177,7 +169,6 @@ const HomePage = ({ onNavClick }: { onNavClick: (page: string) => void }) => {
         </button>
       </section>
 
-      {/* 2. Revolutionary Features Section */}
       <section>
         <h2 className="text-4xl font-bold text-slate-900 mb-10 text-center">
           Revolutionary Features for Modern Legal Understanding
@@ -189,7 +180,6 @@ const HomePage = ({ onNavClick }: { onNavClick: (page: string) => void }) => {
         </div>
       </section>
 
-      {/* 3. More Features Section */}
       <section>
         <h2 className="text-4xl font-bold text-slate-900 mb-10 text-center">
           A Comprehensive Legal Toolkit
@@ -204,10 +194,6 @@ const HomePage = ({ onNavClick }: { onNavClick: (page: string) => void }) => {
   );
 };
 
-// ==========================================================
-// ** FEATURE IS BACK **
-// 2. Document Generator (This is the original)
-// ==========================================================
 const DocumentGenerator = () => {
   const [docType, setDocType] = useState('rental-agreement');
   const [formData, setFormData] = useState<any>({});
@@ -215,6 +201,8 @@ const DocumentGenerator = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  
+  const { currentUser } = useAuth();
 
   const handleSpeak = () => {
     if (!generatedDoc) return;
@@ -281,7 +269,9 @@ const DocumentGenerator = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true); setGeneratedDoc(''); setError(null);
+    setIsLoading(true);
+    setGeneratedDoc('');
+    setError(null);
     try {
       const response = await fetch('http://localhost:8001/api/generate-document', {
         method: 'POST',
@@ -294,6 +284,17 @@ const DocumentGenerator = () => {
       }
       const { text } = await response.json();
       setGeneratedDoc(text);
+
+      if (currentUser) {
+        const historyRef = collection(db, 'history', currentUser.uid, 'queries');
+        await addDoc(historyRef, {
+          type: "Document Generation",
+          query: `Generated: ${docType}`,
+          response: text,
+          createdAt: serverTimestamp()
+        });
+      }
+
     } catch (err: any) { 
       setError(err.message); 
     } 
@@ -301,7 +302,7 @@ const DocumentGenerator = () => {
   };
 
   return (
-    <div className="animate-fade-in max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto">
       <h2 className="text-4xl font-bold text-slate-900 mb-6 text-center">AI Document Generator</h2>
       <form onSubmit={handleSubmit} className="bg-white p-8 rounded-2xl shadow-lg border border-slate-200 space-y-5">
         <div>
@@ -345,16 +346,14 @@ const DocumentGenerator = () => {
   );
 };
 
-// ==========================================================
-// ** NEW FEATURE: This is your new file uploader **
-// 3. Document Analyzer
-// ==========================================================
 const DocumentAnalyzer = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [summary, setSummary] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
+
+  const { currentUser } = useAuth();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -363,7 +362,6 @@ const DocumentAnalyzer = () => {
     }
   };
 
-  // --- Text-to-Speech Logic ---
   const handleSpeak = () => {
     if (!summary) return;
     window.speechSynthesis.cancel();
@@ -378,9 +376,7 @@ const DocumentAnalyzer = () => {
     window.speechSynthesis.cancel();
     setIsSpeaking(false);
   };
-  // --- End Text-to-Speech ---
 
-  // --- PDF Download Logic ---
   const handleDownloadPDF = () => {
     if (!summary) return;
     const doc = new jsPDF();
@@ -391,7 +387,6 @@ const DocumentAnalyzer = () => {
     doc.text(splitText, 14, 35);
     doc.save("NyaySaathi_Summary.pdf");
   };
-  // --- End PDF Download ---
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -400,17 +395,17 @@ const DocumentAnalyzer = () => {
       return; 
     }
     
-    setIsLoading(true); setSummary(''); setError(null);
+    setIsLoading(true);
+    setSummary('');
+    setError(null);
     
-    // We must use FormData to send a file
     const formData = new FormData();
     formData.append('document', selectedFile);
 
     try {
-      // Send the file to the new backend endpoint
       const response = await fetch('http://localhost:8001/api/upload-and-summarize', {
         method: 'POST',
-        body: formData, // No 'Content-Type' header, browser sets it for FormData
+        body: formData,
       });
 
       if (!response.ok) {
@@ -419,6 +414,17 @@ const DocumentAnalyzer = () => {
       }
       const { text } = await response.json();
       setSummary(text);
+
+      if (currentUser) {
+        const historyRef = collection(db, 'history', currentUser.uid, 'queries');
+        await addDoc(historyRef, {
+          type: "Document Analysis",
+          query: `Analyzed: ${selectedFile.name}`,
+          response: text,
+          createdAt: serverTimestamp()
+        });
+      }
+
     } catch (err: any) { 
       setError(err.message); 
     } 
@@ -426,15 +432,12 @@ const DocumentAnalyzer = () => {
   };
 
   return (
-    <div className="animate-fade-in max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto">
       <h2 className="text-4xl font-bold text-slate-900 mb-2 text-center">Smart Document Analysis</h2>
       <p className="text-lg text-slate-600 mb-6 text-center">Upload your legal document (PDF or TXT) to get a simple, clear summary.</p>
 
-      <form onSubmit={handleSubmit} className="bg-white p-8 rounded-2xl shadow-lg border border-slate-200 space-y-5 relative overflow-hidden">
-        {/* Subtle gradient glow */}
-        <div className="absolute -top-1/2 -left-1/2 w-[200%] h-[200%] bg-gradient-to-r from-purple-600 via-transparent to-transparent opacity-10 animate-spin-slow" style={{ animationDuration: '10s' }} />
-        
-        <div className="relative">
+      <form onSubmit={handleSubmit} className="bg-white p-8 rounded-2xl shadow-lg border border-slate-200 space-y-5">
+        <div>
           <label className="block text-sm font-medium text-slate-700 mb-2">Upload your document</label>
           <div className="mt-2 flex justify-center rounded-lg border border-dashed border-slate-300 px-6 py-10">
             <div className="text-center">
@@ -490,7 +493,6 @@ const DocumentAnalyzer = () => {
             </div>
           </div>
           <LegalDisclaimer />
-          {/* Use 'prose' for beautiful formatting of the AI's response */}
           <div className="prose prose-lg max-w-none text-slate-700 whitespace-pre-wrap">{summary}</div>
         </div>
       )}
@@ -498,13 +500,13 @@ const DocumentAnalyzer = () => {
   );
 };
 
-
-// --- 4. Case Predictor (AI Query) ---
 const CasePredictor = () => {
   const [caseDescription, setCaseDescription] = useState('');
   const [predictionResult, setPredictionResult] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const { currentUser } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -512,7 +514,9 @@ const CasePredictor = () => {
       setError("Please provide a more detailed description (at least 20 characters)."); 
       return; 
     }
-    setIsLoading(true); setPredictionResult(null); setError(null);
+    setIsLoading(true);
+    setPredictionResult(null);
+    setError(null);
     try {
       const response = await fetch('http://localhost:8001/api/predict-case', {
         method: 'POST',
@@ -525,11 +529,33 @@ const CasePredictor = () => {
       }
       const result = await response.json();
       setPredictionResult(result);
+
+      if (currentUser) {
+        const historyRef = collection(db, 'history', currentUser.uid, 'queries');
+        await addDoc(historyRef, {
+          type: "AI Query",
+          query: caseDescription,
+          response: result.text,
+          sources: result.sources || [],
+          createdAt: serverTimestamp()
+        });
+      }
+
     } catch (err: any) { 
       setError(err.message); 
     } 
     finally { setIsLoading(false); }
   };
+
+  useEffect(() => {
+    try {
+      const initial = localStorage.getItem('nyaysaathi_initial_query');
+      if (initial && initial.trim().length > 0) {
+        setCaseDescription(initial);
+        localStorage.removeItem('nyaysaathi_initial_query');
+      }
+    } catch (e) {}
+  }, []);
 
   const handleDownloadPDF = () => {
     if (!predictionResult?.text) return;
@@ -543,14 +569,11 @@ const CasePredictor = () => {
   };
 
   return (
-    <div className="animate-fade-in max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto">
       <h2 className="text-4xl font-bold text-slate-900 mb-2 text-center">AI Legal Query</h2>
       <p className="text-lg text-slate-600 mb-6 text-center">Get AI-Powered Explanations & Case Insights</p>
-      <form onSubmit={handleSubmit} className="bg-white p-8 rounded-2xl shadow-lg border border-slate-200 space-y-5 relative overflow-hidden">
-        {/* Subtle gradient glow */}
-        <div className="absolute -top-1/2 -left-1/2 w-[200%] h-[200%] bg-gradient-to-r from-blue-600 via-transparent to-transparent opacity-10 animate-spin-slow" style={{ animationDuration: '10s' }} />
-        
-        <div className="relative">
+      <form onSubmit={handleSubmit} className="bg-white p-8 rounded-2xl shadow-lg border border-slate-200 space-y-5">
+        <div>
           <label className="block text-sm font-medium text-slate-700 mb-2">Ask your legal question</label>
           <textarea 
             value={caseDescription} 
@@ -595,7 +618,627 @@ const CasePredictor = () => {
   );
 };
 
-// --- 5. Advocate Finder (REDESIGNED) ---
+const MultiLanguageVoice = ({ onNavigate }: { onNavigate: (page: string) => void }) => {
+  const [isListening, setIsListening] = useState(false);
+  const [transcript, setTranscript] = useState('');
+  const [lang, setLang] = useState('en-IN');
+
+  // Web Speech API compatibility
+  const SpeechRecognition: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition || null;
+  const recognitionRef = React.useRef<any>(null);
+
+  useEffect(() => {
+    if (!SpeechRecognition) return;
+    const r = new SpeechRecognition();
+    r.continuous = true;
+    r.interimResults = true;
+    r.lang = lang;
+
+    r.onresult = (event: any) => {
+      let interim = '';
+      let final = '';
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        const res = event.results[i];
+        if (res.isFinal) final += res[0].transcript;
+        else interim += res[0].transcript;
+      }
+      setTranscript((prev) => (prev + ' ' + final + ' ' + interim).trim());
+    };
+
+    r.onerror = (e: any) => {
+      console.warn('Speech recognition error', e);
+      setIsListening(false);
+    };
+    recognitionRef.current = r;
+    return () => {
+      try { r.stop(); } catch (e) {}
+    };
+  }, [SpeechRecognition, lang]);
+
+  const startListening = () => {
+    if (!SpeechRecognition) return alert('Speech Recognition not supported in this browser.');
+    try {
+      recognitionRef.current.lang = lang;
+      recognitionRef.current.start();
+      setIsListening(true);
+    } catch (e) {
+      console.warn(e);
+    }
+  };
+  const stopListening = () => {
+    try { recognitionRef.current.stop(); } catch (e) {}
+    setIsListening(false);
+  };
+
+  const playText = () => {
+    if (!('speechSynthesis' in window)) return alert('Text-to-speech not supported in this browser.');
+    const utter = new SpeechSynthesisUtterance(transcript || '');
+    utter.lang = lang;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utter);
+  };
+
+  const sendToAI = () => {
+    if (!transcript || transcript.trim().length < 5) return alert('Please speak or enter some text first.');
+    // save to localStorage for CasePredictor to pick up
+    localStorage.setItem('nyaysaathi_initial_query', transcript.trim());
+    onNavigate('predict');
+  };
+
+  return (
+    <div className="max-w-3xl mx-auto">
+      <h2 className="text-4xl font-bold text-slate-900 mb-4 text-center">Multi-Language Voice Assistant</h2>
+      <p className="text-slate-600 text-center mb-6">Speak in your preferred language and send the transcribed query to the AI assistant.</p>
+
+      <div className="bg-white p-6 rounded-2xl shadow-lg border border-slate-200 space-y-4">
+        <label className="block text-sm font-medium text-slate-700">Language</label>
+        <select value={lang} onChange={(e) => setLang(e.target.value)} className="w-full p-3 border border-slate-300 rounded-lg mb-4">
+          <option value="en-IN">English (India)</option>
+          <option value="hi-IN">Hindi</option>
+          <option value="mr-IN">Marathi</option>
+          <option value="bn-IN">Bengali</option>
+          <option value="ta-IN">Tamil</option>
+          <option value="te-IN">Telugu</option>
+          <option value="kn-IN">Kannada</option>
+        </select>
+
+        <div className="flex gap-3 mb-3">
+          {!isListening ? (
+            <button onClick={startListening} className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg">Start Listening</button>
+          ) : (
+            <button onClick={stopListening} className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg">Stop</button>
+          )}
+          <button onClick={() => { setTranscript(''); }} className="px-4 py-2 bg-slate-100 rounded-lg">Clear</button>
+          <button onClick={playText} className="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg">Play</button>
+          <button onClick={sendToAI} className="ml-auto px-4 py-2 bg-indigo-600 text-white rounded-lg">Send to AI</button>
+        </div>
+
+        <label className="block text-sm font-medium text-slate-700">Transcript</label>
+        <textarea value={transcript} onChange={(e) => setTranscript(e.target.value)} rows={6} className="w-full p-3 border border-slate-300 rounded-lg" />
+
+        <div className="text-sm text-slate-500">Hint: Press Start and speak clearly. When done, press Stop then Send to AI.</div>
+      </div>
+    </div>
+  );
+};
+
+const IPCLookup = () => {
+  const { currentUser } = useAuth();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [results, setResults] = useState<any[]>([]);
+  const [selected, setSelected] = useState<any | null>(null);
+  const [bookmarkedSections, setBookmarkedSections] = useState<string[]>([]);
+
+  useEffect(() => {
+    const q = searchTerm.trim().toLowerCase();
+    if (!q) {
+      setResults(ipcData.slice(0, 50));
+      setSelected(null);
+      return;
+    }
+    const matches = ipcData.filter(item => (
+      item.section.toString().includes(q) ||
+      item.title.toLowerCase().includes(q) ||
+      (item.short || '').toLowerCase().includes(q) ||
+      (item.keywords || []).some((k:any) => k.toLowerCase().includes(q)) ||
+      (item.description || '').toLowerCase().includes(q)
+    ));
+    setResults(matches);
+    setSelected(matches[0] || null);
+  }, [searchTerm]);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    const bookmarksRef = collection(db, 'users', currentUser.uid, 'bookmarks');
+    const bookmarkQuery = query(bookmarksRef);
+    const unsubscribe = onSnapshot(bookmarkQuery, (snapshot) => {
+      const bookmarked = snapshot.docs
+        .filter(doc => doc.data().type === 'IPC Section')
+        .map(doc => doc.data().data.section);
+      setBookmarkedSections(bookmarked);
+    });
+    return () => unsubscribe();
+  }, [currentUser]);
+
+  const addBookmark = async () => {
+    if (!currentUser) { alert('Please log in to bookmark'); return; }
+    if (!selected) return;
+    try {
+      const bookmarksRef = collection(db, 'users', currentUser.uid, 'bookmarks');
+      await addDoc(bookmarksRef, {
+        type: 'IPC Section',
+        data: selected,
+        createdAt: serverTimestamp()
+      });
+      alert('Bookmarked!');
+    } catch (err) {
+      console.error('Error bookmarking:', err);
+    }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    alert('Copied to clipboard');
+  };
+
+  const downloadCSV = () => {
+    const rows = results.map(r => (`"${r.section}","${(r.title||'').replace(/"/g,'""')}","${(r.short||'').replace(/"/g,'""')}","${(r.description||'').replace(/"/g,'""')}"`));
+    const csv = 'section,title,short,description\n' + rows.join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'ipc_lookup.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="max-w-6xl mx-auto">
+      <h2 className="text-4xl font-bold text-slate-900 mb-4 text-center">Instant IPC Lookup</h2>
+      <p className="text-slate-600 text-center mb-6">Search Indian Penal Code sections quickly. This is informational only; consult a legal professional for advice.</p>
+
+      <div className="bg-white p-6 rounded-2xl shadow-lg border border-slate-200">
+        <div className="flex gap-4 mb-4">
+          <input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search by section number, title or keywords" className="flex-1 p-3 border border-slate-300 rounded-lg" />
+          <button onClick={() => { setSearchTerm(''); }} className="px-4 py-2 bg-slate-100 rounded-lg">Clear</button>
+          <button onClick={downloadCSV} className="px-4 py-2 bg-blue-600 text-white rounded-lg">Download CSV</button>
+        </div>
+
+        <div className="grid md:grid-cols-3 gap-6">
+          <div className="md:col-span-1">
+            <h4 className="text-lg font-semibold mb-3">Results ({results.length})</h4>
+            <div className="space-y-3 max-h-96 overflow-auto">
+              {results.map((r, idx) => (
+                <button key={idx} onClick={() => setSelected(r)} className="w-full text-left p-3 rounded-lg border border-slate-100 hover:bg-slate-50">
+                  <div className="font-semibold">Section {r.section} — {r.short}</div>
+                  <div className="text-sm text-slate-500">{r.title}</div>
+                </button>
+              ))}
+              {results.length === 0 && <div className="text-slate-500">No results</div>}
+            </div>
+          </div>
+
+          <div className="md:col-span-2">
+            {selected ? (
+              <div>
+                <div className="flex justify-between items-start gap-4">
+                  <div>
+                    <h3 className="text-2xl font-bold">Section {selected.section} — {selected.title}</h3>
+                    <div className="text-sm text-slate-500 mt-1">{selected.short}</div>
+                  </div>
+                  <div className="flex gap-2 flex-wrap">
+                    <button onClick={() => copyToClipboard(`Section ${selected.section}: ${selected.title}\n\n${selected.description}`)} className="px-4 py-2 bg-slate-100 rounded-lg">Copy</button>
+                    <button onClick={() => {
+                      const doc = new jsPDF();
+                      doc.setFontSize(14);
+                      doc.text(`Section ${selected.section} - ${selected.title}`, 14, 20);
+                      doc.setFontSize(11);
+                      const split = doc.splitTextToSize(selected.description, 180);
+                      doc.text(split, 14, 35);
+                      doc.save(`IPC_${selected.section}.pdf`);
+                    }} className="px-4 py-2 bg-blue-600 text-white rounded-lg">Export PDF</button>
+                    <button onClick={addBookmark} className={`px-4 py-2 rounded-lg font-medium flex items-center gap-1 ${bookmarkedSections.includes(selected.section) ? 'bg-yellow-100 text-yellow-700' : 'bg-amber-100 text-amber-700 hover:bg-amber-200'}`}>
+                      <Bookmark className="w-4 h-4" /> {bookmarkedSections.includes(selected.section) ? 'Bookmarked' : 'Bookmark'}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="mt-6 prose prose-lg text-slate-700 whitespace-pre-wrap">{selected.description}</div>
+              </div>
+            ) : (
+              <div className="text-slate-500">Select a section to view details.</div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const CaseLawDatabase = () => {
+  const { currentUser } = useAuth();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [sortBy, setSortBy] = useState('year');
+  const [selectedCase, setSelectedCase] = useState<any | null>(null);
+  const [bookmarkedCases, setBookmarkedCases] = useState<string[]>([]);
+
+  const categories = ['All', ...new Set(casesData.map((c: any) => c.category))];
+
+  useEffect(() => {
+    if (!currentUser) return;
+    const bookmarksRef = collection(db, 'users', currentUser.uid, 'bookmarks');
+    const bookmarkQuery = query(bookmarksRef);
+    const unsubscribe = onSnapshot(bookmarkQuery, (snapshot) => {
+      const bookmarked = snapshot.docs
+        .filter(doc => doc.data().type === 'Case')
+        .map(doc => doc.data().data.id);
+      setBookmarkedCases(bookmarked);
+    });
+    return () => unsubscribe();
+  }, [currentUser]);
+
+  const addBookmark = async () => {
+    if (!currentUser) { alert('Please log in to bookmark'); return; }
+    if (!selectedCase) return;
+    try {
+      const bookmarksRef = collection(db, 'users', currentUser.uid, 'bookmarks');
+      await addDoc(bookmarksRef, {
+        type: 'Case',
+        data: selectedCase,
+        createdAt: serverTimestamp()
+      });
+      alert('Bookmarked!');
+    } catch (err) {
+      console.error('Error bookmarking:', err);
+    }
+  };
+
+  const filteredCases = casesData.filter((c: any) => {
+    const matchesSearch = searchQuery.trim() === '' || 
+      c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      c.summary.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      c.relatedSections.some((s: string) => s.includes(searchQuery));
+    const matchesCategory = selectedCategory === 'All' || c.category === selectedCategory;
+    return matchesSearch && matchesCategory;
+  });
+
+  const sortedCases = [...filteredCases].sort((a, b) => {
+    if (sortBy === 'year') return b.year - a.year;
+    if (sortBy === 'title') return a.title.localeCompare(b.title);
+    if (sortBy === 'court') return a.court.localeCompare(b.court);
+    return 0;
+  });
+
+  return (
+    <div className="max-w-6xl mx-auto">
+      <h2 className="text-4xl font-bold text-slate-900 mb-4 text-center">Case Law Database</h2>
+      <p className="text-slate-600 text-center mb-6">Search landmark Indian court cases, their rulings, and impact on law.</p>
+
+      <div className="bg-white p-6 rounded-2xl shadow-lg border border-slate-200 space-y-4">
+        {/* Search and filters */}
+        <div className="flex flex-col md:flex-row gap-4">
+          <input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search by case name, summary or section"
+            className="flex-1 p-3 border border-slate-300 rounded-lg"
+          />
+          <select
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+            className="p-3 border border-slate-300 rounded-lg"
+          >
+            {categories.map((cat) => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
+          </select>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="p-3 border border-slate-300 rounded-lg"
+          >
+            <option value="year">Year (Latest First)</option>
+            <option value="title">Title (A-Z)</option>
+            <option value="court">Court</option>
+          </select>
+          <button onClick={() => { setSearchQuery(''); setSelectedCategory('All'); }} className="px-4 py-2 bg-slate-100 rounded-lg">
+            Clear
+          </button>
+        </div>
+
+        {/* Results count */}
+        <div className="text-sm text-slate-600">
+          Showing {sortedCases.length} of {casesData.length} cases
+        </div>
+
+        <div className="grid md:grid-cols-3 gap-6">
+          {/* Case list */}
+          <div className="md:col-span-1">
+            <h4 className="text-lg font-semibold mb-3">Cases</h4>
+            <div className="space-y-2 max-h-96 overflow-auto">
+              {sortedCases.map((c: any) => (
+                <button
+                  key={c.id}
+                  onClick={() => setSelectedCase(c)}
+                  className={`w-full text-left p-3 rounded-lg border transition-all ${
+                    selectedCase?.id === c.id
+                      ? 'bg-indigo-100 border-indigo-300'
+                      : 'border-slate-100 hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="font-semibold text-sm">{c.title}</div>
+                  <div className="text-xs text-slate-500">{c.year} — {c.court}</div>
+                </button>
+              ))}
+              {sortedCases.length === 0 && (
+                <div className="text-slate-500 py-4">No cases found</div>
+              )}
+            </div>
+          </div>
+
+          {/* Case details */}
+          <div className="md:col-span-2">
+            {selectedCase ? (
+              <div className="space-y-6">
+                <div className="flex justify-between items-start gap-4">
+                  <div>
+                    <h3 className="text-2xl font-bold text-slate-900">{selectedCase.title}</h3>
+                    <div className="text-sm text-slate-600 mt-2 space-y-1">
+                      <div><strong>Court:</strong> {selectedCase.court}</div>
+                      <div><strong>Year:</strong> {selectedCase.year}</div>
+                      <div><strong>Case No:</strong> {selectedCase.caseNumber}</div>
+                      <div><strong>Category:</strong> {selectedCase.category}</div>
+                    </div>
+                  </div>
+                  <button onClick={addBookmark} className={`px-4 py-2 rounded-lg font-medium flex items-center gap-1 whitespace-nowrap ${bookmarkedCases.includes(selectedCase.id) ? 'bg-yellow-100 text-yellow-700' : 'bg-amber-100 text-amber-700 hover:bg-amber-200'}`}>
+                    <Bookmark className="w-4 h-4" /> {bookmarkedCases.includes(selectedCase.id) ? 'Bookmarked' : 'Bookmark'}
+                  </button>
+                </div>
+
+                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                  <h4 className="font-semibold text-blue-900 mb-2">Summary</h4>
+                  <p className="text-slate-700 text-sm">{selectedCase.summary}</p>
+                </div>
+
+                <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200">
+                  <h4 className="font-semibold text-indigo-900 mb-2">Key Holding</h4>
+                  <p className="text-slate-700 text-sm">{selectedCase.keyholding}</p>
+                </div>
+
+                <div>
+                  <h4 className="font-semibold text-slate-900 mb-2">Related IPC Sections</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedCase.relatedSections.map((section: string) => (
+                      <span key={section} className="bg-slate-100 px-3 py-1 rounded-full text-sm font-medium">
+                        Section {section}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                  <h4 className="font-semibold text-green-900 mb-2">Legal Impact</h4>
+                  <p className="text-slate-700 text-sm">{selectedCase.impact}</p>
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      const text = `${selectedCase.title}\nYear: ${selectedCase.year}\nCourt: ${selectedCase.court}\nCase No: ${selectedCase.caseNumber}\n\nSummary: ${selectedCase.summary}\n\nKey Holding: ${selectedCase.keyholding}\n\nImpact: ${selectedCase.impact}`;
+                      navigator.clipboard.writeText(text);
+                      alert('Copied to clipboard');
+                    }}
+                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
+                  >
+                    Copy Case Details
+                  </button>
+                  <button
+                    onClick={() => {
+                      const doc = new jsPDF();
+                      doc.setFontSize(14);
+                      doc.text(selectedCase.title, 14, 20);
+                      doc.setFontSize(10);
+                      doc.text(`${selectedCase.year} | ${selectedCase.court}`, 14, 30);
+                      doc.setFontSize(11);
+                      doc.text('Summary:', 14, 45);
+                      const summary = doc.splitTextToSize(selectedCase.summary, 180);
+                      doc.text(summary, 14, 50);
+                      const summaryHeight = summary.length * 5;
+                      doc.text('Key Holding:', 14, 50 + summaryHeight + 10);
+                      const holding = doc.splitTextToSize(selectedCase.keyholding, 180);
+                      doc.text(holding, 14, 55 + summaryHeight + 10);
+                      doc.save(`${selectedCase.title.replace(/\s+/g, '_')}.pdf`);
+                    }}
+                    className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700"
+                  >
+                    Export PDF
+                  </button>
+                </div>
+
+                <div className="bg-yellow-50 border border-yellow-300 text-yellow-800 p-4 rounded-lg text-sm">
+                  <strong>Note:</strong> This is a curated selection of landmark cases. For comprehensive legal research and current case status, consult official court databases and legal professionals.
+                </div>
+              </div>
+            ) : (
+              <div className="text-slate-500 text-center py-10">Select a case to view full details.</div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const PenaltyCalculator = () => {
+  const { currentUser } = useAuth();
+  const [selectedSection, setSelectedSection] = useState<any | null>(null);
+  const [searchSection, setSearchSection] = useState('');
+  const [bookmarkedSections, setBookmarkedSections] = useState<string[]>([]);
+
+  const filteredPenalties = penaltyData.filter(p =>
+    p.section.toString().includes(searchSection) ||
+    p.title.toLowerCase().includes(searchSection.toLowerCase())
+  );
+
+  useEffect(() => {
+    if (!currentUser) return;
+    const bookmarksRef = collection(db, 'users', currentUser.uid, 'bookmarks');
+    const bookmarkQuery = query(bookmarksRef);
+    const unsubscribe = onSnapshot(bookmarkQuery, (snapshot) => {
+      const bookmarked = snapshot.docs
+        .filter(doc => doc.data().type === 'Penalty')
+        .map(doc => doc.data().data.section);
+      setBookmarkedSections(bookmarked);
+    });
+    return () => unsubscribe();
+  }, [currentUser]);
+
+  const addBookmark = async () => {
+    if (!currentUser) { alert('Please log in to bookmark'); return; }
+    if (!selectedSection) return;
+    try {
+      const bookmarksRef = collection(db, 'users', currentUser.uid, 'bookmarks');
+      await addDoc(bookmarksRef, {
+        type: 'Penalty',
+        data: selectedSection,
+        createdAt: serverTimestamp()
+      });
+      alert('Bookmarked!');
+    } catch (err) {
+      console.error('Error bookmarking:', err);
+    }
+  };
+
+  const formatPenalty = (val: any) => {
+    if (val === 'life') return 'Life Imprisonment';
+    if (val === 'unlimited') return 'Unlimited Fine';
+    if (typeof val === 'number') {
+      if (val < 1) return Math.round(val * 12) + ' months';
+      return val + ' years';
+    }
+    return val;
+  };
+
+  return (
+    <div className="max-w-6xl mx-auto">
+      <h2 className="text-4xl font-bold text-slate-900 mb-4 text-center">Penalty Calculator</h2>
+      <p className="text-slate-600 text-center mb-6">Select an IPC section to view applicable penalties, factors affecting sentencing, and case examples.</p>
+
+      <div className="bg-white p-6 rounded-2xl shadow-lg border border-slate-200">
+        <div className="flex gap-4 mb-4">
+          <input
+            value={searchSection}
+            onChange={(e) => setSearchSection(e.target.value)}
+            placeholder="Search by section or title"
+            className="flex-1 p-3 border border-slate-300 rounded-lg"
+          />
+          <button onClick={() => setSearchSection('')} className="px-4 py-2 bg-slate-100 rounded-lg">Clear</button>
+        </div>
+
+        <div className="grid md:grid-cols-3 gap-6">
+          <div className="md:col-span-1">
+            <h4 className="text-lg font-semibold mb-3">Sections ({filteredPenalties.length})</h4>
+            <div className="space-y-2 max-h-96 overflow-auto">
+              {filteredPenalties.map((p, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setSelectedSection(p)}
+                  className={`w-full text-left p-3 rounded-lg border transition-all ${
+                    selectedSection?.section === p.section
+                      ? 'bg-blue-100 border-blue-300'
+                      : 'border-slate-100 hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="font-semibold">Section {p.section}</div>
+                  <div className="text-sm text-slate-500 truncate">{p.title}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="md:col-span-2">
+            {selectedSection ? (
+              <div className="space-y-6">
+                <div className="flex justify-between items-start gap-4">
+                  <div>
+                    <h3 className="text-2xl font-bold">Section {selectedSection.section} — {selectedSection.title}</h3>
+                    <p className="text-slate-600 mt-2">{selectedSection.description}</p>
+                  </div>
+                  <button onClick={addBookmark} className={`px-4 py-2 rounded-lg font-medium flex items-center gap-1 whitespace-nowrap ${bookmarkedSections.includes(selectedSection.section) ? 'bg-yellow-100 text-yellow-700' : 'bg-amber-100 text-amber-700 hover:bg-amber-200'}`}>
+                    <Bookmark className="w-4 h-4" /> {bookmarkedSections.includes(selectedSection.section) ? 'Bookmarked' : 'Bookmark'}
+                  </button>
+                </div>
+
+                <div className="bg-gradient-to-r from-orange-50 to-red-50 p-6 rounded-xl border border-orange-200">
+                  <h4 className="text-lg font-semibold text-orange-900 mb-4">Penalty Range</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-white p-4 rounded-lg border border-orange-100">
+                      <div className="text-sm text-slate-600 font-medium">Imprisonment</div>
+                      <div className="text-lg font-bold text-orange-700 mt-1">
+                        {selectedSection.imprisonmentMin === 0 && selectedSection.imprisonmentMax === 'life'
+                          ? 'Up to Life or may be Nil'
+                          : `${formatPenalty(selectedSection.imprisonmentMin)} to ${formatPenalty(selectedSection.imprisonmentMax)}`}
+                      </div>
+                    </div>
+                    <div className="bg-white p-4 rounded-lg border border-orange-100">
+                      <div className="text-sm text-slate-600 font-medium">Fine</div>
+                      <div className="text-lg font-bold text-orange-700 mt-1">
+                        ₹{selectedSection.fineMin === 0 ? '0' : selectedSection.fineMin} to {formatPenalty(selectedSection.fineMax)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="text-lg font-semibold mb-3">Factors Affecting Sentencing</h4>
+                  <ul className="space-y-2">
+                    {selectedSection.factors?.map((factor: string, idx: number) => (
+                      <li key={idx} className="flex items-start gap-3">
+                        <span className="text-blue-600 font-bold">•</span>
+                        <span className="text-slate-700">{factor}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div>
+                  <h4 className="text-lg font-semibold mb-3">Case Examples</h4>
+                  <div className="space-y-3">
+                    {selectedSection.examples?.map((example: string, idx: number) => (
+                      <div key={idx} className="bg-slate-50 p-3 rounded-lg border border-slate-200 text-slate-700">
+                        <span className="font-medium text-slate-900">Example {idx + 1}:</span> {example}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="bg-yellow-50 border border-yellow-300 text-yellow-800 p-4 rounded-lg text-sm">
+                  <strong>Disclaimer:</strong> This information is for educational purposes only. Actual penalties vary based on specific case facts, evidence, judge's discretion, and applicable laws. Always consult a legal professional.
+                </div>
+
+                <button
+                  onClick={() => {
+                    const text = `Section ${selectedSection.section}: ${selectedSection.title}\n\n${selectedSection.description}\n\nPenalty Range:\nImprisonment: ${formatPenalty(selectedSection.imprisonmentMin)} to ${formatPenalty(selectedSection.imprisonmentMax)}\nFine: ₹${selectedSection.fineMin} to ${formatPenalty(selectedSection.fineMax)}\n\nFactors: ${selectedSection.factors?.join(', ')}\n\nExamples: ${selectedSection.examples?.join('; ')}`;
+                    navigator.clipboard.writeText(text);
+                    alert('Copied to clipboard');
+                  }}
+                  className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
+                >
+                  Copy Information
+                </button>
+              </div>
+            ) : (
+              <div className="text-slate-500 text-center py-10">Select a section to view penalty details.</div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const AdvocateFinder = () => {
   const [allLawyers, setAllLawyers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -604,9 +1247,9 @@ const AdvocateFinder = () => {
   const [specialtyFilter, setSpecialtyFilter] = useState('All');
   
   useEffect(() => {
-    setIsLoading(true); setError(null);
-    const collectionPath = "advocates";
-    const q = query(collection(db, collectionPath));
+    setIsLoading(true);
+    setError(null);
+    const q = query(collection(db, "advocates"));
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const lawyers: any[] = [];
       querySnapshot.forEach((doc: QueryDocumentSnapshot<DocumentData>) => {
@@ -616,7 +1259,7 @@ const AdvocateFinder = () => {
       setIsLoading(false);
     }, (err) => {
       console.error(err);
-      setError("Failed to load advocates. Check console.");
+      setError("Failed to load advocates.");
       setIsLoading(false);
     });
     return () => unsubscribe();
@@ -628,8 +1271,7 @@ const AdvocateFinder = () => {
     (cityFilter === 'All' || lawyer.city === cityFilter) &&
     (specialtyFilter === 'All' || lawyer.specialty === specialtyFilter)
   );
-  
-  // --- Premium Advocate Card ---
+
   const LawyerProfileCard = ({ lawyer }: { lawyer: any }) => (
     <div className="bg-white p-6 rounded-2xl shadow-lg border border-slate-200 flex flex-col sm:flex-row items-start sm:items-center gap-6 transition-all duration-300 ease-in-out hover:shadow-2xl hover:-translate-y-1">
       <img 
@@ -655,9 +1297,8 @@ const AdvocateFinder = () => {
   );
 
   return (
-    <div className="animate-fade-in max-w-6xl mx-auto">
+    <div className="max-w-6xl mx-auto">
       <h2 className="text-4xl font-bold text-slate-900 mb-8 text-center">Find an Advocate</h2>
-      {/* --- Filter Bar --- */}
       <div className="bg-white p-6 rounded-2xl shadow-lg border border-slate-200 mb-10 flex flex-col md:flex-row gap-4">
         <div className="flex-1">
           <label htmlFor="cityFilter" className="block text-sm font-medium text-slate-700 mb-2">City:</label>
@@ -673,7 +1314,6 @@ const AdvocateFinder = () => {
         </div>
       </div>
       
-      {/* --- Results --- */}
       {isLoading && <div className="text-center p-10"><Loader2 className="animate-spin w-10 h-10 mx-auto text-blue-600" /></div>}
       {error && <div className="mt-6 bg-red-100 border border-red-300 text-red-800 px-4 py-3 rounded-lg"><strong>Error:</strong> {error}</div>}
       {!isLoading && !error && (
@@ -689,17 +1329,10 @@ const AdvocateFinder = () => {
   );
 };
 
-// --- 6. Recent Verdicts (REDESIGNED) ---
-// --- New VerdictCard Component ---
 const VerdictCard = ({ verdict }: { verdict: any }) => {
   const [isSpeaking, setIsSpeaking] = useState(false);
 
-  const ttsText = `
-    Case: ${verdict.caseName}.
-    Court: ${verdict.court}.
-    Date: ${verdict.date}.
-    Summary: ${verdict.summary}
-  `;
+  const ttsText = `Case: ${verdict.caseName}. Court: ${verdict.court}. Date: ${verdict.date}. Summary: ${verdict.summary}`;
 
   const handleSpeak = () => {
     window.speechSynthesis.cancel();
@@ -745,24 +1378,224 @@ const VerdictCard = ({ verdict }: { verdict: any }) => {
   );
 };
 
-// --- This function parses the AI's text block into structured objects ---
 const parseVerdicts = (text: string): any[] => {
   try {
-    const verdictBlocks = text.split(/\n?(?=\d\.\s*\*\*Case Name:\*\*)/);
-    if (verdictBlocks.length > 0 && !verdictBlocks[0].startsWith('1.')) {
-      verdictBlocks.shift();
+    if (!text || text.trim() === '') return [];
+
+    // Case A: markdown table with a header containing 'Case Name'
+    if (/\|\s*Case Name\s*\|/i.test(text)) {
+      const lines = text.split('\n').map((l) => l.trim()).filter((l) => l !== '');
+      // find header line index (line with Case Name) and ensure next line is the separator
+      let headerIndex = lines.findIndex((l, i) => /\|\s*Case Name\s*\|/i.test(l) && i + 1 < lines.length && /^\|?\s*[-:]+/.test(lines[i + 1] || ''));
+      if (headerIndex === -1) {
+        headerIndex = lines.findIndex((l) => l.startsWith('|'));
+      }
+      const results: any[] = [];
+      if (headerIndex !== -1) {
+        // data rows start after header + separator
+        for (let i = headerIndex + 2; i < lines.length; i++) {
+          const ln = lines[i];
+          if (!ln.startsWith('|')) continue;
+          const cols = ln.split('|').slice(1, -1).map((c) => c.trim());
+          const caseName = cols[0] || 'N/A';
+          const date = cols[1] || 'N/A';
+          const court = cols[2] || 'N/A';
+          const significance = cols.slice(3).join(' | ') || '';
+          results.push({ caseName, court, date, summary: significance });
+        }
+        return results.map((r, idx) => ({ id: idx, caseName: r.caseName, court: r.court, date: r.date, summary: r.summary }));
+      }
     }
-    return verdictBlocks.map((block, index) => {
-      const caseName = block.match(/\*\*Case Name:\*\* (.*?)\n/)?.[1]?.replace(/\*/g, '').trim() || `Verdict ${index + 1}`;
-      const court = block.match(/\*\*Court:\*\* (.*?)\n/)?.[1]?.replace(/\*/g, '').trim() || 'N/A';
-      const date = block.match(/\*\*Date:\*\* (.*?)\n/)?.[1]?.replace(/\*/g, '').trim() || 'N/A';
-      const summary = block.match(/\*\*Summary:\*\* ([\s\S]*)/)?.[1]?.replace(/\*/g, '').trim() || block;
-      return { id: index, caseName, court, date, summary };
-    });
+
+    // Case B: existing bold-field format like '**Case Name:** ...\n**Court:** ...'
+    if (/\*\*Case Name:\*\*/.test(text)) {
+      const verdictBlocks = text.split(/\n(?=\d\.\s*\*\*Case Name:\*\*)/).map((b) => b.trim()).filter((b) => b !== '');
+      return verdictBlocks.map((block, index) => {
+        const caseName = block.match(/\*\*Case Name:\*\* (.*?)\n/)?.[1]?.replace(/\*/g, '').trim() || `Verdict ${index + 1}`;
+        const court = block.match(/\*\*Court:\*\* (.*?)\n/)?.[1]?.replace(/\*/g, '').trim() || 'N/A';
+        const date = block.match(/\*\*Date:\*\* (.*?)\n/)?.[1]?.replace(/\*/g, '').trim() || 'N/A';
+        const summary = block.match(/\*\*Summary:\*\* ([\s\S]*)/)?.[1]?.replace(/\*/g, '').trim() || block.trim();
+        return { id: index, caseName, court, date, summary };
+      });
+    }
+
+    // Case C: fallback - split by double newlines into reasonable chunks
+    const possibleBlocks = text.split(/\n{2,}/).map((b) => b.trim()).filter((b) => b !== '');
+    if (possibleBlocks.length > 1) {
+      return possibleBlocks.map((block, index) => ({
+        id: index,
+        caseName: block.split('\n')[0].slice(0, 120),
+        court: 'N/A',
+        date: 'N/A',
+        summary: block,
+      }));
+    }
+
+    // Final fallback: return the full text as a single verdict summary
+    return [{ id: 0, caseName: 'Recent Verdicts', court: 'N/A', date: 'N/A', summary: text.trim() }];
   } catch (e) {
-    console.error("Failed to parse verdicts:", e);
-    return [{ id: 0, caseName: "Recent Verdicts", court: "N/A", date: "N/A", summary: text }];
+    console.error('Failed to parse verdicts:', e);
+    return [{ id: 0, caseName: 'Recent Verdicts', court: 'N/A', date: 'N/A', summary: text }];
   }
+};
+
+const Bookmarks = ({ onNavigate }: { onNavigate: (page: string) => void }) => {
+  const { currentUser } = useAuth();
+  const [bookmarks, setBookmarks] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [filterType, setFilterType] = useState('All');
+
+  useEffect(() => {
+    if (!currentUser) return;
+
+    setIsLoading(true);
+    const bookmarksRef = collection(db, 'users', currentUser.uid, 'bookmarks');
+    const q = query(bookmarksRef, orderBy('createdAt', 'desc'));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setBookmarks(data as any[]);
+      setIsLoading(false);
+    }, (err) => {
+      console.error('Error loading bookmarks:', err);
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [currentUser]);
+
+  const removeBookmark = async (bookmarkId: string) => {
+    if (!currentUser) return;
+    try {
+      await deleteDoc(doc(db, 'users', currentUser.uid, 'bookmarks', bookmarkId));
+    } catch (err) {
+      console.error('Error removing bookmark:', err);
+    }
+  };
+
+  const addBookmark = async (type: string, data: any) => {
+    if (!currentUser) {
+      alert('Please log in to bookmark');
+      return;
+    }
+    try {
+      const bookmarksRef = collection(db, 'users', currentUser.uid, 'bookmarks');
+      await addDoc(bookmarksRef, {
+        type,
+        data,
+        createdAt: serverTimestamp()
+      });
+      alert('Bookmarked successfully!');
+    } catch (err) {
+      console.error('Error saving bookmark:', err);
+    }
+  };
+
+  const types = ['All', 'IPC Section', 'Case', 'Penalty'];
+  const filteredBookmarks = filterType === 'All' 
+    ? bookmarks 
+    : bookmarks.filter(b => b.type === filterType);
+
+  const BookmarkCard = ({ bookmark }: { bookmark: any }) => {
+    const { type, data, id } = bookmark;
+    const createdAt = bookmark.createdAt?.toDate?.() || new Date();
+    const dateStr = createdAt.toLocaleDateString();
+
+    return (
+      <div className="bg-white p-4 rounded-lg border border-slate-200 hover:shadow-lg transition-all">
+        <div className="flex justify-between items-start gap-4">
+          <div className="flex-1">
+            <div className="text-xs font-semibold text-blue-600 uppercase mb-1">{type}</div>
+            {type === 'IPC Section' && (
+              <>
+                <h4 className="text-lg font-semibold text-slate-900">Section {data.section}</h4>
+                <p className="text-sm text-slate-600">{data.title}</p>
+              </>
+            )}
+            {type === 'Case' && (
+              <>
+                <h4 className="text-lg font-semibold text-slate-900">{data.title}</h4>
+                <p className="text-sm text-slate-600">{data.court} ({data.year})</p>
+              </>
+            )}
+            {type === 'Penalty' && (
+              <>
+                <h4 className="text-lg font-semibold text-slate-900">Section {data.section}</h4>
+                <p className="text-sm text-slate-600">{data.title}</p>
+              </>
+            )}
+            <div className="text-xs text-slate-500 mt-2">Saved on {dateStr}</div>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                if (type === 'IPC Section') onNavigate('ipc');
+                else if (type === 'Case') onNavigate('cases');
+                else if (type === 'Penalty') onNavigate('penalty');
+              }}
+              className="px-3 py-1 bg-blue-100 text-blue-700 rounded text-sm font-medium hover:bg-blue-200"
+            >
+              View
+            </button>
+            <button
+              onClick={() => removeBookmark(id)}
+              className="px-3 py-1 bg-red-100 text-red-700 rounded text-sm font-medium hover:bg-red-200"
+            >
+              Remove
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="max-w-6xl mx-auto">
+      <h2 className="text-4xl font-bold text-slate-900 mb-4 text-center">My Bookmarks</h2>
+      <p className="text-slate-600 text-center mb-6">Save and organize your favorite IPC sections, cases, and penalties for quick reference.</p>
+
+      {isLoading ? (
+        <div className="text-center py-10">
+          <Loader2 className="animate-spin w-10 h-10 mx-auto text-blue-600" />
+        </div>
+      ) : (
+        <div className="bg-white p-6 rounded-2xl shadow-lg border border-slate-200">
+          <div className="flex gap-2 mb-6 flex-wrap">
+            {types.map(t => (
+              <button
+                key={t}
+                onClick={() => setFilterType(t)}
+                className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                  filterType === t
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                }`}
+              >
+                {t} ({filterType === t ? filteredBookmarks.length : bookmarks.filter(b => t === 'All' || b.type === t).length})
+              </button>
+            ))}
+          </div>
+
+          {filteredBookmarks.length > 0 ? (
+            <div className="grid md:grid-cols-2 gap-4">
+              {filteredBookmarks.map(bookmark => (
+                <BookmarkCard key={bookmark.id} bookmark={bookmark} />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12 text-slate-500">
+              <Star className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              <p className="text-lg">No bookmarks yet</p>
+              <p className="text-sm mt-2">Explore IPC sections, cases, and penalties to start bookmarking</p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
 };
 
 const RecentVerdicts = () => {
@@ -773,7 +1606,8 @@ const RecentVerdicts = () => {
 
   useEffect(() => {
     const fetchVerdicts = async () => {
-      setIsLoading(true); setError(null);
+      setIsLoading(true);
+      setError(null);
       try {
         const response = await fetch('http://localhost:8001/api/recent-verdicts');
         if (!response.ok) {
@@ -781,9 +1615,23 @@ const RecentVerdicts = () => {
           throw new Error(err.error || 'Failed to fetch verdicts');
         }
         const result = await response.json();
-        const parsedVerdicts = parseVerdicts(result.text);
-        setVerdicts(parsedVerdicts);
-        setSources(result.sources || []);
+        // Prefer structured verdicts from backend when available
+        if (result.verdicts && Array.isArray(result.verdicts) && result.verdicts.length > 0) {
+          // Normalize items to expected shape
+          const normalized = result.verdicts.map((v: any, idx: number) => ({
+            id: v.id ?? idx,
+            caseName: v.caseName || v.title || `Verdict ${idx + 1}`,
+            court: v.court || 'N/A',
+            date: v.date || 'N/A',
+            summary: v.summary || v.description || v.content || '',
+          }));
+          setVerdicts(normalized);
+          setSources(result.sources || []);
+        } else {
+          const parsedVerdicts = parseVerdicts(result.text || '');
+          setVerdicts(parsedVerdicts);
+          setSources(result.sources || []);
+        }
       } catch (err: any) { 
         setError(err.message); 
       } 
@@ -793,7 +1641,7 @@ const RecentVerdicts = () => {
   }, []);
 
   return (
-    <div className="animate-fade-in max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto">
       <h2 className="text-4xl font-bold text-slate-900 mb-8 text-center">Recent Indian Court Verdicts</h2>
       {error && <div className="mt-6 bg-red-100 border border-red-300 text-red-800 px-4 py-3 rounded-lg"><strong>Error:</strong> {error}</div>}
       {isLoading && (
@@ -824,10 +1672,90 @@ const RecentVerdicts = () => {
   );
 };
 
-// --- 7. Contact Page (REMOVED as requested) ---
-// ...
+const HistoryPage = () => {
+  const [history, setHistory] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const { currentUser } = useAuth();
 
-// --- 8. Login/Sign Up Page (REDESIGNED) ---
+  useEffect(() => {
+    if (!currentUser) return;
+
+    setIsLoading(true);
+    setError(null);
+
+    const historyRef = collection(db, 'history', currentUser.uid, 'queries');
+    const q = query(historyRef, orderBy("createdAt", "desc"));
+
+    const unsubscribe = onSnapshot(q, 
+      (querySnapshot) => {
+        const historyData: any[] = [];
+        querySnapshot.forEach((doc: QueryDocumentSnapshot<DocumentData>) => {
+          historyData.push({ id: doc.id, ...doc.data() });
+        });
+        setHistory(historyData);
+        setIsLoading(false);
+      }, 
+      (err) => {
+        console.error("[Firestore] Error fetching history:", err);
+        setError("Failed to load your history.");
+        setIsLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [currentUser]);
+
+  const HistoryCard = ({ item }: { item: any }) => {
+    return (
+      <div className="bg-white p-6 rounded-2xl shadow-lg border border-slate-200">
+        <div className="flex items-center gap-3 mb-3">
+          {item.type === "AI Query" && <BrainCircuit className="w-6 h-6 text-purple-600" />}
+          {item.type === "Document Analysis" && <FileSearch className="w-6 h-6 text-purple-600" />}
+          {item.type === "Document Generation" && <FileText className="w-6 h-6 text-blue-600" />}
+          <h3 className="text-xl font-semibold text-slate-900">{item.type}</h3>
+          <span className="text-sm text-slate-500">
+            {item.createdAt ? new Date((item.createdAt as any).toDate()).toLocaleString() : 'Just now'}
+          </span>
+        </div>
+        <p className="text-slate-600 mb-4 line-clamp-2"><strong className="text-slate-700">Your Query:</strong> {item.query}</p>
+        <details>
+          <summary className="font-medium text-blue-600 cursor-pointer">View Full Response</summary>
+          <div className="prose prose-lg max-w-none text-slate-700 whitespace-pre-wrap mt-4 border-t pt-4">
+            {item.response}
+          </div>
+        </details>
+      </div>
+    );
+  };
+
+  return (
+    <div className="max-w-4xl mx-auto">
+      <h2 className="text-4xl font-bold text-slate-900 mb-8 text-center">My History</h2>
+      {error && <div className="mt-6 bg-red-100 border border-red-300 text-red-800 px-4 py-3 rounded-lg"><strong>Error:</strong> {error}</div>}
+      {isLoading && (
+        <div className="text-center p-10 text-slate-600">
+          <Loader2 className="animate-spin w-10 h-10 mx-auto mb-3 text-blue-600" />
+          Loading your history...
+        </div>
+      )}
+      {!isLoading && !error && (
+        <div className="space-y-8">
+          {history.length > 0 ? (
+            history.map((item) => (
+              <HistoryCard key={item.id} item={item} />
+            ))
+          ) : (
+            <p className="text-center text-slate-600 text-lg p-10 bg-white rounded-2xl shadow-lg border border-slate-200">
+              You don't have any history yet. Try using "AI Query" or "Doc Analyzer" to see your results here!
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const AuthPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -838,7 +1766,9 @@ const AuthPage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null); setMessage(null); setIsLoading(true);
+    setError(null);
+    setMessage(null);
+    setIsLoading(true);
     try {
       if (isLogin) {
         await signInWithEmailAndPassword(auth, email, password);
@@ -847,15 +1777,15 @@ const AuthPage = () => {
         await createUserWithEmailAndPassword(auth, email, password);
         setMessage('Signed up successfully! You are now logged in.');
       }
-    } catch (err: any) { 
-      setError(err.message); 
+    } catch (err: any) {
+      setError(err.message);
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="animate-fade-in max-w-md mx-auto mt-12">
+    <div className="max-w-md mx-auto mt-12">
       <div className="flex justify-center items-center gap-3 mb-6">
         <Gavel className="w-10 h-10 text-blue-600" />
         <h1 className="text-3xl font-bold text-slate-900">Nyay Saathi</h1>
@@ -885,46 +1815,213 @@ const AuthPage = () => {
       {message && <div className="mt-6 bg-green-100 border border-green-300 text-green-800 px-4 py-3 rounded-lg">{message}</div>}
     </div>
   );
-}
+};
 
-// --- Main App Component (REDESIGNED) ---
+const ConstitutionalRights = () => {
+  const [selectedCategory, setSelectedCategory] = useState('Fundamental Rights');
+  const [selectedRight, setSelectedRight] = useState<any | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const categories = constitutionalRightsData.map((cat: any) => cat.category);
+  
+  const currentCategory = constitutionalRightsData.find((cat: any) => cat.category === selectedCategory);
+  
+  let filteredRights = currentCategory?.rights || [];
+  if (searchTerm.trim()) {
+    const q = searchTerm.toLowerCase();
+    filteredRights = filteredRights.filter((right: any) =>
+      right.article.toLowerCase().includes(q) ||
+      right.title.toLowerCase().includes(q) ||
+      right.description.toLowerCase().includes(q)
+    );
+  }
+
+  const displayRight = selectedRight || (filteredRights.length > 0 ? filteredRights[0] : null);
+
+  return (
+    <div className="max-w-6xl mx-auto">
+      <h2 className="text-4xl font-bold text-slate-900 mb-4 text-center">Constitutional Rights Guide</h2>
+      <p className="text-slate-600 text-center mb-6">Complete guide to fundamental rights, duties, and directive principles of Indian Constitution.</p>
+
+      <div className="bg-white p-6 rounded-2xl shadow-lg border border-slate-200">
+        {/* Category tabs */}
+        <div className="flex gap-2 mb-6 overflow-x-auto pb-2 flex-wrap">
+          {categories.map((cat: string) => (
+            <button
+              key={cat}
+              onClick={() => {
+                setSelectedCategory(cat);
+                setSelectedRight(null);
+                setSearchTerm('');
+              }}
+              className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap transition-all ${
+                selectedCategory === cat
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+
+        {/* Search */}
+        <div className="mb-6">
+          <input
+            type="text"
+            placeholder="Search by article, title, or keywords..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+
+        <div className="grid md:grid-cols-3 gap-6">
+          {/* Rights list */}
+          <div className="md:col-span-1">
+            <h4 className="text-lg font-semibold mb-3">Rights ({filteredRights.length})</h4>
+            <div className="space-y-2 max-h-96 overflow-auto">
+              {filteredRights.map((right: any) => (
+                <button
+                  key={right.article}
+                  onClick={() => setSelectedRight(right)}
+                  className={`w-full text-left p-3 rounded-lg border transition-all ${
+                    displayRight?.article === right.article
+                      ? 'bg-blue-100 border-blue-300'
+                      : 'border-slate-100 hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="font-semibold text-sm">{right.article}</div>
+                  <div className="text-xs text-slate-600 line-clamp-2">{right.title}</div>
+                </button>
+              ))}
+              {filteredRights.length === 0 && (
+                <div className="text-slate-500 text-center py-4">No results found</div>
+              )}
+            </div>
+          </div>
+
+          {/* Right details */}
+          <div className="md:col-span-2">
+            {displayRight ? (
+              <div className="space-y-6">
+                <div>
+                  <div className="inline-block bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-semibold mb-3">
+                    {displayRight.article}
+                  </div>
+                  <h3 className="text-3xl font-bold text-slate-900 mb-2">{displayRight.title}</h3>
+                  <p className="text-slate-600 leading-relaxed">{displayRight.description}</p>
+                </div>
+
+                {displayRight.implications && displayRight.implications.length > 0 && (
+                  <div className="bg-blue-50 p-6 rounded-xl border border-blue-200">
+                    <h4 className="text-lg font-semibold text-blue-900 mb-4">Key Implications</h4>
+                    <ul className="space-y-2">
+                      {displayRight.implications.map((impl: string, idx: number) => (
+                        <li key={idx} className="flex items-start gap-3">
+                          <span className="text-blue-600 font-bold mt-1">•</span>
+                          <span className="text-slate-700">{impl}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {displayRight.examples && displayRight.examples.length > 0 && (
+                  <div className="bg-green-50 p-6 rounded-xl border border-green-200">
+                    <h4 className="text-lg font-semibold text-green-900 mb-4">Landmark Cases</h4>
+                    <ul className="space-y-3">
+                      {displayRight.examples.map((example: string, idx: number) => (
+                        <div key={idx} className="bg-white p-3 rounded-lg border border-green-100">
+                          <p className="text-slate-700 text-sm">{example}</p>
+                        </div>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      const text = `${displayRight.article}: ${displayRight.title}\n\n${displayRight.description}\n\nImplications:\n${displayRight.implications?.join('\n')}\n\nCases:\n${displayRight.examples?.join('\n')}`;
+                      navigator.clipboard.writeText(text);
+                      alert('Copied to clipboard');
+                    }}
+                    className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
+                  >
+                    Copy Details
+                  </button>
+                  <button
+                    onClick={() => {
+                      const doc = new jsPDF();
+                      doc.setFontSize(14);
+                      doc.text(`${displayRight.article} - ${displayRight.title}`, 14, 20);
+                      doc.setFontSize(11);
+                      const split = doc.splitTextToSize(displayRight.description, 180);
+                      doc.text(split, 14, 35);
+                      doc.save(`${displayRight.article}.pdf`);
+                    }}
+                    className="flex-1 px-4 py-3 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700"
+                  >
+                    Export PDF
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="text-slate-500 text-center py-10">Select a right to view details.</div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 function App() {
-  const { currentUser } = useAuth(); // Get login status
+  const { currentUser } = useAuth();
   const [currentPage, setCurrentPage] = useState('home');
 
   const handleLogout = async () => {
     await signOut(auth);
-    setCurrentPage('home'); // Go to home on logout
+    setCurrentPage('home');
   };
   
   const renderPage = () => {
-    // If NOT logged in, show Auth page
     if (!currentUser) {
       return <AuthPage />;
     }
     
-    // If logged in, show the requested page
     switch (currentPage) {
       case 'docs':
-        return <DocumentGenerator />; // Your original feature
+      case 'documents':
+        return <DocumentGenerator />;
       case 'analyze':
-        return <DocumentAnalyzer />; // Your NEW feature
+        return <DocumentAnalyzer />;
       case 'predict':
         return <CasePredictor />;
       case 'find':
         return <AdvocateFinder />;
+      case 'voice':
+        return <MultiLanguageVoice onNavigate={setCurrentPage} />;
+      case 'ipc':
+        return <IPCLookup />;
+      case 'penalty':
+      case 'penalties':
+        return <PenaltyCalculator />;
+      case 'cases':
+        return <CaseLawDatabase />;
+      case 'bookmarks':
+        return <Bookmarks onNavigate={setCurrentPage} />;
       case 'verdicts':
         return <RecentVerdicts />;
-      // ** CONTACT PAGE REMOVED **
-      // case 'contact':
-      //   return <ContactPage />;
+      case 'history':
+        return <HistoryPage />;
       case 'home':
       default:
         return <HomePage onNavClick={setCurrentPage} />;
     }
   };
   
-  // --- Polished Nav Button ---
   const NavButton = ({ page, label, icon: Icon, current }: { page: string, label: string, icon: any, current: string }) => {
     const isActive = currentPage === page;
     return (
@@ -953,11 +2050,7 @@ function App() {
   );
 
   return (
-    // New background color for the "SaaS" feel
     <div className="bg-slate-50 min-h-screen">
-      
-      {/* Polished, Sticky Header */}
-      {/* This header will only show if the user is logged in */}
       {currentUser && (
         <header className="bg-white/95 backdrop-blur-lg shadow-sm border-b border-slate-200 mb-8 sticky top-0 z-50">
           <nav className="container mx-auto px-6 py-4 flex justify-between items-center">
@@ -966,18 +2059,20 @@ function App() {
               <h1 className="text-2xl font-bold text-slate-900">Nyay Saathi</h1>
             </div>
             
-            {/* This div now groups the main links and separates the logout button */}
             <div className="flex items-center divide-x divide-slate-200">
               <div className="flex flex-wrap justify-center gap-2 pr-4">
                 <NavButton page="home" label="Home" icon={Home} current={currentPage} />
                 <NavButton page="predict" label="AI Query" icon={BrainCircuit} current={currentPage} />
-                {/* ** UPDATED: Both features are now here ** */}
                 <NavButton page="docs" label="Doc Generator" icon={FileText} current={currentPage} />
                 <NavButton page="analyze" label="Doc Analyzer" icon={FileSearch} current={currentPage} />
+                <NavButton page="voice" label="Voice" icon={Mic} current={currentPage} />
+                <NavButton page="ipc" label="IPC Lookup" icon={FileSearch} current={currentPage} />
+                <NavButton page="penalty" label="Penalties" icon={Scale} current={currentPage} />
+                <NavButton page="cases" label="Case Law" icon={BookUser} current={currentPage} />
+                <NavButton page="bookmarks" label="Bookmarks" icon={Bookmark} current={currentPage} />
                 <NavButton page="find" label="Find Advocate" icon={BookUser} current={currentPage} />
                 <NavButton page="verdicts" label="Recent Verdicts" icon={Scroll} current={currentPage} />
-                {/* ** CONTACT BUTTON REMOVED ** */}
-                {/* <NavButton page="contact" label="Contact" icon={MessageSquare} current={currentPage} /> */}
+                <NavButton page="history" label="My History" icon={History} current={currentPage} />
               </div>
               <div className="pl-4">
                 <LogoutButton />
@@ -987,13 +2082,10 @@ function App() {
         </header>
       )}
       
-      {/* Page Content */}
       <main className="container mx-auto px-6 py-8">
         {renderPage()}
       </main>
       
-      {/* Redesigned Footer */}
-      {/* This footer will only show if the user is logged in */}
       {currentUser && (
         <footer className="text-center py-10 mt-16 bg-slate-100 border-t border-slate-200 text-slate-500 text-sm">
           <p>© 2025 Nyay Saathi. All rights reserved.</p>

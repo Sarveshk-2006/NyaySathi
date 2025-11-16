@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { auth } from './firebase'; // Import auth from your firebase.ts file
+import { auth } from '../firebase'; // Import auth from your firebase.ts file
 import { Loader2 } from 'lucide-react';
 
 // Define the shape of your context
@@ -28,6 +28,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     // This is the magic! Firebase checks the user's login state
     const unsubscribe = onAuthStateChanged(auth, (user) => {
+      console.log("Auth state changed, user:", user ? user.email : 'null');
       setCurrentUser(user);
       setLoading(false);
     });

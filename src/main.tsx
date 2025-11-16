@@ -3,15 +3,25 @@ import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
 import { BrowserRouter } from 'react-router-dom'
-import { AuthProvider } from './AuthContext' // Use the correct relative path './'
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
+// Use the correct relative path './'
+import { AuthProvider } from './contexts/AuthContext'
+import { ErrorBoundary } from './ErrorBoundary'
+
+const root = document.getElementById('root')
+if (!root) {
+  throw new Error('Root element not found')
+}
+
+ReactDOM.createRoot(root).render(
   <React.StrictMode>
-    <BrowserRouter>
-      {/* Wrap your App in the AuthProvider */}
-      <AuthProvider>
-        <App />
-      </AuthProvider>
-    </BrowserRouter>
+    <ErrorBoundary>
+      <BrowserRouter>
+        {/* Wrap your App in the AuthProvider */}
+        <AuthProvider>
+          <App />
+        </AuthProvider>
+      </BrowserRouter>
+    </ErrorBoundary>
   </React.StrictMode>,
 )

@@ -135,7 +135,67 @@ app.get('/api/recent-verdicts', async (req, res) => {
     const systemPrompt = `You are a legal news AI...`; // (Full prompt)
     const userQuery = "Find 5 recent significant court verdicts in India.";
     const { text, sources } = await callGeminiAPI(userQuery, systemPrompt, true);
-    res.json({ text, sources });
+    // Sanitize text: remove repeated punctuation artifacts and collapse whitespace
+    const sanitize = (s) => {
+      if (!s) return s;
+      let t = s.replace(/[\-_,]{2,}/g, ' '); // replace runs of - _ , with space
+      t = t.replace(/\s{2,}/g, ' ');
+      t = t.replace(/[\u200B-\u200D\uFEFF]/g, '');
+      t = t.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+      // remove sequences like '----,,,,'
+      t = t.replace(/[-]{3,}|[,]{3,}|[.]{3,}/g, '');
+      return t.trim();
+    };
+
+    const parseVerdictsFromText = (txt, sourcesArr = []) => {
+      const cleaned = sanitize(txt || '');
+      if (!cleaned) return [];
+
+      // If markdown table present
+      if (/\|\s*Case Name\s*\|/i.test(cleaned)) {
+        const lines = cleaned.split('\n').map(l => l.trim()).filter(l => l !== '');
+        let headerIndex = lines.findIndex((l, i) => /\|\s*Case Name\s*\|/i.test(l) && i + 1 < lines.length && /^\|?\s*[-:]+/.test(lines[i + 1] || ''));
+        if (headerIndex === -1) headerIndex = lines.findIndex(l => l.startsWith('|'));
+        const out = [];
+        if (headerIndex !== -1) {
+          for (let i = headerIndex + 2; i < lines.length; i++) {
+            const ln = lines[i];
+            if (!ln.startsWith('|')) continue;
+            const cols = ln.split('|').slice(1, -1).map(c => c.trim());
+            const caseName = cols[0] || 'N/A';
+            const date = cols[1] || 'N/A';
+            const court = cols[2] || 'N/A';
+            const summary = cols.slice(3).join(' | ') || '';
+            out.push({ caseName, court, date, summary });
+          }
+        }
+        return out;
+      }
+
+      // If bold-field style
+      if (/\*\*Case Name:\*\*/.test(cleaned)) {
+        const blocks = cleaned.split(/\n(?=\d\.\s*\*\*Case Name:\*\*)/).map(b => b.trim()).filter(b => b !== '');
+        return blocks.map((block, idx) => {
+          const caseName = block.match(/\*\*Case Name:\*\* (.*?)\n/)?.[1]?.replace(/\*/g, '').trim() || `Verdict ${idx + 1}`;
+          const court = block.match(/\*\*Court:\*\* (.*?)\n/)?.[1]?.replace(/\*/g, '').trim() || 'N/A';
+          const date = block.match(/\*\*Date:\*\* (.*?)\n/)?.[1]?.replace(/\*/g, '').trim() || 'N/A';
+          const summary = block.match(/\*\*Summary:\*\* ([\s\S]*)/)?.[1]?.replace(/\*/g, '').trim() || block;
+          return { caseName, court, date, summary };
+        });
+      }
+
+      // Fallback: split by double newlines and treat each as an item
+      const parts = cleaned.split(/\n{2,}/).map(p => p.trim()).filter(p => p !== '');
+      if (parts.length > 1) {
+        return parts.map((p, idx) => ({ caseName: p.split('\n')[0].slice(0, 120), court: 'N/A', date: 'N/A', summary: p }));
+      }
+
+      // Final fallback: single item with full cleaned text
+      return [{ caseName: 'Recent Verdicts', court: 'N/A', date: 'N/A', summary: cleaned }];
+    };
+
+    const verdicts = parseVerdictsFromText(text, sources);
+    res.json({ verdicts, sources });
   } catch (error) {
     console.error('[Server] Error in /api/recent-verdicts:', error);
     res.status(500).json({ error: 'Internal server error' });

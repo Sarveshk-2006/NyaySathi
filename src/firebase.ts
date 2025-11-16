@@ -1,6 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getFirestore, setLogLevel } from "firebase/firestore";
+import { getFirestore } from "firebase/firestore";
 
 // This is your real, correct config
 const firebaseConfig = {
@@ -17,8 +17,5 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-
-// Enable debug logging for Firestore
-setLogLevel('debug');
 
 export { app, auth, db };
