@@ -1788,7 +1788,7 @@ const AuthPage = () => {
     <div className="max-w-md mx-auto mt-12">
       <div className="flex justify-center items-center gap-3 mb-6">
         <Gavel className="w-10 h-10 text-blue-600" />
-        <h1 className="text-3xl font-bold text-slate-900">Nyay Saathi</h1>
+        <h1 className="text-3xl font-bold text-slate-900 whitespace-nowrap">Nyay Saathi</h1>
       </div>
       <h2 className="text-3xl font-bold text-slate-800 mb-6 text-center">{isLogin ? 'Welcome Back' : 'Create Your Account'}</h2>
       <form onSubmit={handleSubmit} className="bg-white p-8 rounded-2xl shadow-xl border border-slate-200 space-y-5">

@@ -5,7 +5,7 @@ const multer = require('multer'); // For file uploads
 const pdf = require('pdf-parse'); // To read PDF text
 
 const app = express();
-const port = 8001;
+const port = process.env.PORT || 8001;
 
 // Multer setup: Store uploaded files in memory
 const storage = multer.memoryStorage();
