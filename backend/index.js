@@ -1,3 +1,4 @@
+const db = require('./db');
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
@@ -91,7 +92,18 @@ async function callGeminiAPI(userQuery, systemPrompt, useGrounding = false, maxR
 }
 
 // --- API Endpoints ---
-
+// NEW ENDPOINT: Get cases by crime type using Stored Procedure
+app.get('/api/cases/:crimeType', async (req, res) => {
+  try {
+    const crimeType = req.params.crimeType;
+    // Call the Stored Procedure you created in MySQL
+    const [rows] = await db.query('CALL GetCasesByCrime(?)', [crimeType]);
+    res.json(rows[0]);
+  } catch (error) {
+    console.error('Database error:', error);
+    res.status(500).json({ error: 'Failed to fetch cases' });
+  }
+});
 // 1. Document Generator Endpoint
 app.post('/api/generate-document', async (req, res) => {
   console.log('[Server] Request received for /api/generate-document');
@@ -234,6 +246,53 @@ app.post('/api/upload-and-summarize', upload.single('document'), async (req, res
 
   } catch (error) {
     console.error('[Server] Error in /api/upload-and-summarize:', error);
+    res.status(500).json({ error: 'Internal server error', details: error.message });
+  }
+});
+
+// 5. Document Analyzer (File Upload & Analysis)
+app.post('/api/analyze-document', upload.single('file'), async (req, res) => {
+  console.log('[Server] Request received for /api/analyze-document');
+  
+  if (!req.file) {
+    return res.status(400).json({ error: 'No file uploaded.' });
+  }
+
+  let documentText = '';
+
+  try {
+    if (req.file.mimetype === 'application/pdf') {
+      const data = await pdf(req.file.buffer);
+      documentText = data.text;
+    } else if (req.file.mimetype === 'text/plain' || req.file.mimetype === 'text/markdown') {
+      documentText = req.file.buffer.toString('utf8');
+    } else if (req.file.mimetype === 'application/msword' || req.file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+      // For DOC/DOCX, we'll extract text from the buffer (basic extraction)
+      documentText = req.file.buffer.toString('utf8', 0, Math.min(10000, req.file.buffer.length));
+    } else {
+      return res.status(400).json({ error: 'Unsupported file type. Please upload a PDF, TXT, DOC, or DOCX file.' });
+    }
+
+    if (documentText.trim().length < 30) {
+      return res.status(400).json({ error: 'Document is too short or could not be read.' });
+    }
+
+    const systemPrompt = `You are an expert legal document analyzer. Analyze the provided legal document and provide a comprehensive analysis including:
+1. Document Type: Identify what type of legal document this is
+2. Key Parties: List the main parties involved
+3. Important Clauses: Highlight critical clauses or terms
+4. Legal Implications: Explain the legal significance
+5. Potential Risks: Identify any potential issues or risks
+6. Recommendations: Suggest any actions or clarifications needed
+
+Format your response in a clear, structured manner with proper headings.`;
+    
+    const { text, sources } = await callGeminiAPI(documentText, systemPrompt, false);
+    
+    res.json({ text, sources });
+
+  } catch (error) {
+    console.error('[Server] Error in /api/analyze-document:', error);
     res.status(500).json({ error: 'Internal server error', details: error.message });
   }
 });
