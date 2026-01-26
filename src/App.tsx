@@ -24,10 +24,15 @@ import penaltyDataSource from './data/penalties.json';
 import casesDataSource from './data/cases.json';
 import constitutionalRightsDataSource from './data/constitutional-rights.json';
 
+
+
 const ipcData = ipcDataSource || [];
 const penaltyData = penaltyDataSource || [];
 const casesData = casesDataSource || [];
 const constitutionalRightsData = constitutionalRightsDataSource || [];
+
+const LOGO_URL = "D:\Nyay-Sathi\citizen-legal-buddy-main\public\logo.jpeg"; 
+
 
 // --- HELPER FUNCTIONS & MOCK DATA ---
 
