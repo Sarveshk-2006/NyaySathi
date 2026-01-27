@@ -253,6 +253,7 @@ app.post('/api/upload-and-summarize', upload.single('document'), async (req, res
 // 5. Document Analyzer (File Upload & Analysis)
 app.post('/api/analyze-document', upload.single('file'), async (req, res) => {
   console.log('[Server] Request received for /api/analyze-document');
+  console.log('[Server] File received:', req.file?.originalname, 'Type:', req.file?.mimetype);
   
   if (!req.file) {
     return res.status(400).json({ error: 'No file uploaded.' });
@@ -261,39 +262,113 @@ app.post('/api/analyze-document', upload.single('file'), async (req, res) => {
   let documentText = '';
 
   try {
-    if (req.file.mimetype === 'application/pdf') {
-      const data = await pdf(req.file.buffer);
-      documentText = data.text;
-    } else if (req.file.mimetype === 'text/plain' || req.file.mimetype === 'text/markdown') {
-      documentText = req.file.buffer.toString('utf8');
-    } else if (req.file.mimetype === 'application/msword' || req.file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-      // For DOC/DOCX, we'll extract text from the buffer (basic extraction)
-      documentText = req.file.buffer.toString('utf8', 0, Math.min(10000, req.file.buffer.length));
-    } else {
-      return res.status(400).json({ error: 'Unsupported file type. Please upload a PDF, TXT, DOC, or DOCX file.' });
+    // Extract text based on file type
+    try {
+      if (req.file.mimetype === 'application/pdf') {
+        try {
+          const data = await pdf(req.file.buffer);
+          documentText = data.text || '';
+          console.log('[Server] PDF extracted:', documentText.length, 'characters');
+        } catch (pdfError) {
+          console.warn('[Server] PDF parsing warning:', pdfError.message);
+          // Try to extract what we can from the PDF
+          documentText = req.file.buffer.toString('utf8', 0, 10000).replace(/[^\x20-\x7E\n]/g, ' ');
+        }
+      } else if (req.file.mimetype === 'text/plain' || req.file.mimetype === 'text/markdown') {
+        documentText = req.file.buffer.toString('utf8');
+        console.log('[Server] Text file extracted:', documentText.length, 'characters');
+      } else if (req.file.mimetype === 'application/msword' || req.file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+        // For DOC/DOCX, extract text from the buffer (basic extraction)
+        documentText = req.file.buffer.toString('utf8', 0, Math.min(50000, req.file.buffer.length))
+          .replace(/[^\x20-\x7E\n]/g, ' ');
+        console.log('[Server] Word doc extracted:', documentText.length, 'characters');
+      } else {
+        return res.status(400).json({ error: 'Unsupported file type. Please upload a PDF, TXT, DOC, or DOCX file.' });
+      }
+    } catch (extractError) {
+      console.error('[Server] Error during text extraction:', extractError);
+      return res.status(400).json({ error: 'Failed to extract text from file. Please ensure the file is valid and not corrupted.' });
     }
 
-    if (documentText.trim().length < 30) {
-      return res.status(400).json({ error: 'Document is too short or could not be read.' });
-    }
-
-    const systemPrompt = `You are an expert legal document analyzer. Analyze the provided legal document and provide a comprehensive analysis including:
-1. Document Type: Identify what type of legal document this is
-2. Key Parties: List the main parties involved
-3. Important Clauses: Highlight critical clauses or terms
-4. Legal Implications: Explain the legal significance
-5. Potential Risks: Identify any potential issues or risks
-6. Recommendations: Suggest any actions or clarifications needed
-
-Format your response in a clear, structured manner with proper headings.`;
+    // Clean up extracted text
+    documentText = documentText.trim().replace(/\s+/g, ' ');
     
+    if (documentText.length < 50) {
+      return res.status(400).json({ error: 'Document is too short or could not be read. Please ensure the document has sufficient content (at least 50 characters).' });
+    }
+
+    // Limit text to prevent API overload (Gemini has token limits)
+    if (documentText.length > 50000) {
+      documentText = documentText.substring(0, 50000);
+      console.log('[Server] Document truncated to 50000 characters');
+    }
+
+    // Enhanced system prompt for comprehensive legal document analysis
+    const systemPrompt = `You are an expert Indian legal document analyzer with extensive knowledge of:
+- Indian legal system and laws
+- Contract analysis and interpretation
+- Legal terminology and implications
+- Risk assessment and recommendations
+
+Analyze the provided legal document and provide a detailed, comprehensive analysis including:
+
+## 1. Document Overview
+- Document Type (e.g., Contract, Agreement, Deed, Will, Affidavit, etc.)
+- Document Name/Title (if identifiable)
+- Date of creation (if mentioned)
+- Jurisdiction (which law/state applies)
+
+## 2. Parties Involved
+- List all parties/stakeholders mentioned
+- Their roles and responsibilities
+- Relationship between parties
+
+## 3. Summary
+- Provide a concise 2-3 sentence summary of the document's purpose
+
+## 4. Key Provisions & Clauses
+- List the most important clauses/sections
+- Explain what each clause means in simple terms
+- Highlight obligations and rights
+
+## 5. Legal Implications
+- What are the legal consequences of this document?
+- Applicable laws and regulations
+- Constitutional or statutory considerations
+
+## 6. Potential Risks & Issues
+- Ambiguous or problematic clauses
+- Missing provisions that should be included
+- Unfavorable terms or conditions
+- Compliance concerns
+
+## 7. Important Dates & Deadlines
+- Key dates mentioned
+- Validity period
+- Important deadlines
+
+## 8. Recommendations
+- Actions to be taken
+- Clarifications needed before signing
+- Legal advice/suggestions for improvement
+- Red flags to watch out for
+
+Format your response in a clear, structured manner with proper headings and bullet points for easy reading.`;
+    
+    console.log('[Server] Calling Gemini API for document analysis...');
     const { text, sources } = await callGeminiAPI(documentText, systemPrompt, false);
     
-    res.json({ text, sources });
+    if (text.startsWith('Error:')) {
+      console.error('[Server] API returned error:', text);
+      return res.status(500).json({ error: text });
+    }
+    
+    console.log('[Server] Analysis completed successfully');
+    res.json({ text, sources, fileName: req.file.originalname });
 
   } catch (error) {
     console.error('[Server] Error in /api/analyze-document:', error);
-    res.status(500).json({ error: 'Internal server error', details: error.message });
+    res.status(500).json({ error: 'Internal server error. Please try again with a different document.', details: error.message });
   }
 });
 

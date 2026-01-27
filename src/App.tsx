@@ -1798,6 +1798,11 @@ const DocumentAnalyzer = () => {
         body: formData
       });
 
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to analyze document');
+      }
+
       const { text } = await response.json();
       setAnalyzeResult(text);
 
@@ -1811,6 +1816,7 @@ const DocumentAnalyzer = () => {
       }
     } catch (err: any) {
       alert('Error analyzing document: ' + err.message);
+      setAnalyzeResult('');
     } finally {
       setIsAnalyzing(false);
     }

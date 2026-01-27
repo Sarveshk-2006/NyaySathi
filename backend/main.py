@@ -2,7 +2,7 @@ from fastapi import FastAPI, UploadFile, Form, File
 from pydantic import BaseModel
 import os
 from dotenv import load_dotenv
-from openai import OpenAI
+import google.generativeai as genai
 import PyPDF2
 import docx
 from fastapi.middleware.cors import CORSMiddleware
@@ -12,8 +12,8 @@ from contextlib import closing
 
 # Load API key
 load_dotenv()
-api_key = os.getenv("OPENAI_API_KEY")
-client = OpenAI(api_key=api_key)
+api_key = os.getenv("GEMINI_API_KEY")
+genai.configure(api_key=api_key)
 
 # Database setup
 DB_PATH = os.path.join(os.path.dirname(__file__), "uploaded_docs.db")
@@ -84,16 +84,9 @@ Information provided:
 
 Create a ready-to-use legal document template with all necessary sections, clauses, and proper legal language for Indian courts. Format it clearly with proper structure.
 """
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You are an expert legal document generator for Indian law."},
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=2000,
-            temperature=0.3
-        )
-        text = response.choices[0].message.content.strip()
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        response = model.generate_content(prompt)
+        text = response.text.strip()
         return {"text": text}
     except Exception as e:
         print(f"Error: {e}")
@@ -139,16 +132,9 @@ Document (first 4000 chars):
 
 Provide a well-structured summary.
 """
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You are an expert at analyzing legal documents for Indian citizens."},
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=1000,
-            temperature=0.4
-        )
-        summary = response.choices[0].message.content.strip()
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        response = model.generate_content(prompt)
+        summary = response.text.strip()
         return {"text": summary}
 
     except Exception as e:
@@ -177,16 +163,9 @@ Please provide:
 Be clear, accurate, and helpful. Format the response well with proper sections.
 IMPORTANT: Always remind users to consult with a qualified lawyer for specific legal advice.
 """
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You are an expert AI Legal Assistant for Indian law. Provide detailed, accurate legal information."},
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=1500,
-            temperature=0.3
-        )
-        text = response.choices[0].message.content.strip()
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        response = model.generate_content(prompt)
+        text = response.text.strip()
         return {
             "text": text,
             "sources": []
@@ -212,16 +191,9 @@ Generate 3-4 realistic (but fictional) recent Indian court verdicts. Format each
 
 Make them sound realistic and relevant to Indian law.
 """
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You are knowledgeable about Indian court cases."},
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=1200,
-            temperature=0.5
-        )
-        text = response.choices[0].message.content.strip()
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        response = model.generate_content(prompt)
+        text = response.text.strip()
         return {
             "text": text,
             "sources": []
