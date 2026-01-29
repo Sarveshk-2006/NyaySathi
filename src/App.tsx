@@ -5,17 +5,20 @@ import {
   ChevronRight, Mic, Search, Shield, Clock, Zap, Globe, FileSearch, Upload, 
   Bookmark, History, Menu, X, ArrowRight, CheckCircle2, Play, ExternalLink,
   MessageSquare, ThumbsUp, Filter, Plus, Info, Send, Share2, MoreHorizontal,
-  Bot, User, Trophy, BookOpen, Lightbulb, RefreshCw, MessageCircle // Added MessageCircle here
+  Bot, User, Trophy, BookOpen, Lightbulb, RefreshCw, MessageCircle, Eye, EyeOff, AlertCircle, Github
 } from 'lucide-react';
 
 // --- IMPORTS ---
 import { db, auth } from './firebase'; 
 import { 
   collection, query, onSnapshot, QueryDocumentSnapshot, DocumentData, 
-  addDoc, serverTimestamp, orderBy, deleteDoc, doc, updateDoc, arrayUnion, arrayRemove, increment 
+  addDoc, serverTimestamp, orderBy, deleteDoc, doc, updateDoc, arrayUnion, arrayRemove, increment, setDoc, limit 
 } from 'firebase/firestore';
 import { useAuth } from './contexts/AuthContext'; 
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { 
+  createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, 
+  signInWithPopup, GoogleAuthProvider, GithubAuthProvider 
+} from 'firebase/auth';
 import { jsPDF } from 'jspdf'; 
 
 // Data Imports
@@ -23,15 +26,16 @@ import ipcDataSource from './data/ipc.json';
 import penaltyDataSource from './data/penalties.json';
 import casesDataSource from './data/cases.json';
 import constitutionalRightsDataSource from './data/constitutional-rights.json';
+import firIpcDataSource from './data/fir-ipc.json';
 
 
 
-const ipcData = ipcDataSource || [];
-const penaltyData = penaltyDataSource || [];
+const ipcData = firIpcDataSource || ipcDataSource || [];
+const penaltyData = firIpcDataSource || penaltyDataSource || [];
 const casesData = casesDataSource || [];
 const constitutionalRightsData = constitutionalRightsDataSource || [];
 
-const LOGO_URL = "D:\Nyay-Sathi\citizen-legal-buddy-main\public\logo.jpeg"; 
+const LOGO_URL = "/logo.png"; 
 
 
 // --- HELPER FUNCTIONS & MOCK DATA ---
@@ -141,32 +145,111 @@ const LEARNING_MODULES = [
     id: 1,
     title: "Rights Upon Arrest",
     desc: "Know your fundamental rights if detained by police.",
-    xp: 100,
+    xp: 120,
     icon: Shield,
+    type: 'quiz',
     questions: [
       { q: "Can you be arrested without a warrant?", options: ["Yes, for cognizable offenses", "No, never", "Only at night"], ans: 0 },
       { q: "What is the time limit to produce an arrested person before a magistrate?", options: ["12 hours", "24 hours", "48 hours"], ans: 1 },
+      { q: "Which right allows you to inform a relative about the arrest?", options: ["Right to Silence", "Right to Legal Aid", "Right to Inform"], ans: 2 },
     ]
   },
   {
     id: 2,
-    title: "Consumer Protection",
-    desc: "How to file a complaint against defective goods.",
-    xp: 150,
+    title: "Consumer Rescue Scenario",
+    desc: "Choose the best step in real‑life consumer disputes.",
+    xp: 160,
     icon: Scale,
-    questions: [
-      { q: "Which mark certifies gold purity in India?", options: ["ISI", "Agmark", "BIS Hallmark"], ans: 2 },
-      { q: "Can you file a consumer complaint online?", options: ["Yes", "No"], ans: 0 },
+    type: 'scenario',
+    scenarios: [
+      {
+        story: "You bought a mobile online. It stopped working in 10 days, and the seller refuses replacement.",
+        question: "What is the BEST next step?",
+        options: ["Post on social media", "File a consumer complaint online", "Threaten a defamation case"],
+        ans: 1
+      },
+      {
+        story: "A restaurant refuses to share a tax invoice after charging GST.",
+        question: "What should you do first?",
+        options: ["Ask for invoice in writing and keep proof", "Call police immediately", "Ignore it"],
+        ans: 0
+      },
     ]
   },
   {
     id: 3,
-    title: "Cyber Crime Basics",
-    desc: "Reporting online fraud and digital safety.",
-    xp: 200,
+    title: "Cyber Safety Rapid Fire",
+    desc: "Quick true/false checks to build digital safety reflexes.",
+    xp: 180,
     icon: Globe,
-    questions: [
-      { q: "What is the helpline number for Cyber Crime in India?", options: ["100", "1930", "108"], ans: 1 },
+    type: 'rapid',
+    items: [
+      { statement: "Sharing OTP with customer care is safe.", ans: false },
+      { statement: "You should report a UPI fraud to 1930 immediately.", ans: true },
+      { statement: "Installing APKs from unknown sources is low risk.", ans: false },
+    ]
+  },
+  {
+    id: 4,
+    title: "FIR First Response",
+    desc: "Pick the correct legal response in common FIR situations.",
+    xp: 140,
+    icon: Gavel,
+    type: 'scenario',
+    scenarios: [
+      {
+        story: "Your phone is stolen. The police station says to come later and refuses to take your complaint.",
+        question: "What is the correct next step?",
+        options: ["Leave and try another day", "Send written complaint to SP/Senior officer", "Pay a fee to register"],
+        ans: 1
+      },
+      {
+        story: "You lost your wallet; you need proof for insurance.",
+        question: "What should you file first?",
+        options: ["A Non‑Cognizable report / Lost report", "A civil suit", "A defamation complaint"],
+        ans: 0
+      },
+    ]
+  },
+  {
+    id: 5,
+    title: "FIR Filing Timeline",
+    desc: "Arrange the steps to file an FIR correctly.",
+    xp: 180,
+    icon: Scroll,
+    type: 'ordering',
+    steps: [
+      "Give a written complaint at the police station",
+      "Receive a signed copy of FIR with FIR number",
+      "Narrate the incident details to the duty officer",
+      "If refused, send complaint to SP/DCP in writing",
+    ],
+    correctOrder: [2, 0, 1, 3]
+  },
+  {
+    id: 6,
+    title: "Rights Match‑Up",
+    desc: "Match the right with its correct protection.",
+    xp: 200,
+    icon: BookOpen,
+    type: 'match',
+    pairs: [
+      { left: "Article 21", right: "Right to life and personal liberty" },
+      { left: "Article 22", right: "Protection against arbitrary arrest" },
+      { left: "Article 19", right: "Freedom of speech and expression" },
+    ]
+  },
+  {
+    id: 7,
+    title: "Spot the Clause",
+    desc: "Fill in the missing legal term.",
+    xp: 160,
+    icon: FileSearch,
+    type: 'fill',
+    prompts: [
+      { text: "An arrested person must be produced before a magistrate within ____ hours.", answer: "24" },
+      { text: "The national cyber crime helpline number is ____.", answer: "1930" },
+      { text: "FIR stands for First Information ____.", answer: "Report" },
     ]
   }
 ];
@@ -209,6 +292,7 @@ const LegalDisclaimer = () => (
 const HomePage = ({ onNavClick }: { onNavClick: (page: string) => void }) => {
   const coreTools = [
     { title: "Smart Chat", desc: "Chat with AI to solve legal queries instantly.", icon: MessageCircle, action: 'chat' },
+    { title: "Outcome Predictor", desc: "AI + Database powered case outcome prediction.", icon: BrainCircuit, action: 'outcome' },
     { title: "Doc Generator", desc: "Create rental agreements, affidavits & wills.", icon: FileText, action: 'docs' },
     { title: "Nyay Vidya", desc: "Gamified learning. Earn badges by learning law.", icon: Trophy, action: 'learn' },
     { title: "Voice Assistant", desc: "Speak in Hindi, Marathi, or English.", icon: Mic, action: 'voice' },
@@ -371,9 +455,54 @@ const AuthPage = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
+  const [showForgotModal, setShowForgotModal] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<{ email?: string; password?: string }>({});
+
+  // Calculate password strength
+  const getPasswordStrength = () => {
+    if (!password) return { score: 0, label: '', color: 'bg-slate-200' };
+    let score = 0;
+    if (password.length >= 8) score++;
+    if (password.length >= 12) score++;
+    if (/[A-Z]/.test(password)) score++;
+    if (/[0-9]/.test(password)) score++;
+    if (/[^A-Za-z0-9]/.test(password)) score++;
+    
+    if (score <= 1) return { score: 1, label: 'Weak', color: 'bg-red-500' };
+    if (score <= 2) return { score: 2, label: 'Fair', color: 'bg-yellow-500' };
+    if (score <= 3) return { score: 3, label: 'Good', color: 'bg-blue-500' };
+    return { score: 4, label: 'Strong', color: 'bg-green-500' };
+  };
+
+  // Form validation
+  const validateForm = () => {
+    const errors: { email?: string; password?: string } = {};
+    
+    if (!email) {
+      errors.email = 'Email is required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      errors.email = 'Please enter a valid email';
+    }
+    
+    if (!password) {
+      errors.password = 'Password is required';
+    } else if (!isLogin && password.length < 6) {
+      errors.password = 'Password must be at least 6 characters';
+    }
+    
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!validateForm()) return;
+    
     setError(null);
     setIsLoading(true);
     try {
@@ -382,6 +511,10 @@ const AuthPage = () => {
       } else {
         await createUserWithEmailAndPassword(auth, email, password);
       }
+      setShowSuccess(true);
+      setTimeout(() => {
+        setShowSuccess(false);
+      }, 2000);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -389,45 +522,526 @@ const AuthPage = () => {
     }
   };
 
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forgotEmail) return;
+    // In a real app, call a backend endpoint to send reset email
+    alert(`Password reset link sent to ${forgotEmail}`);
+    setShowForgotModal(false);
+    setForgotEmail('');
+  };
+
+  const handleGoogleLogin = async () => {
+    setError(null);
+    setIsLoading(true);
+    try {
+      const provider = new GoogleAuthProvider();
+      provider.addScope('profile');
+      provider.addScope('email');
+      await signInWithPopup(auth, provider);
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 2000);
+    } catch (err: any) {
+      if (err.code !== 'auth/popup-closed-by-user') {
+        setError(err.message || 'Google Sign-In failed. Please try again.');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGithubLogin = async () => {
+    setError(null);
+    setIsLoading(true);
+    try {
+      const provider = new GithubAuthProvider();
+      provider.addScope('user:email');
+      await signInWithPopup(auth, provider);
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 2000);
+    } catch (err: any) {
+      if (err.code !== 'auth/popup-closed-by-user') {
+        setError(err.message || 'GitHub Sign-In failed. Please try again.');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]">
-      <div className="bg-white w-full max-w-5xl rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col md:flex-row min-h-[600px] border border-slate-100">
-        <div className="md:w-5/12 bg-slate-900 relative overflow-hidden p-12 text-white flex flex-col justify-between">
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] overflow-hidden relative">
+      {/* Animated background elements */}
+      <div className="absolute top-20 left-10 w-72 h-72 bg-blue-300/10 rounded-full blur-3xl animate-pulse"></div>
+      <div className="absolute bottom-20 right-10 w-96 h-96 bg-amber-300/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
+
+      <style>{`
+        @keyframes slideInLeft {
+          from {
+            opacity: 0;
+            transform: translateX(-40px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+
+        @keyframes slideInRight {
+          from {
+            opacity: 0;
+            transform: translateX(40px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+
+        @keyframes fadeInUp {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          25% { transform: translateX(-10px); }
+          75% { transform: translateX(10px); }
+        }
+
+        @keyframes successPop {
+          0% {
+            opacity: 0;
+            transform: scale(0.5);
+          }
+          50% {
+            transform: scale(1.05);
+          }
+          100% {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+
+        @keyframes confetti {
+          0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+          100% { transform: translateY(500px) rotate(720deg); opacity: 0; }
+        }
+
+        .auth-container {
+          animation: slideInUp 0.6s ease-out;
+        }
+
+        .left-panel {
+          animation: slideInLeft 0.7s ease-out;
+        }
+
+        .right-panel {
+          animation: slideInRight 0.7s ease-out;
+        }
+
+        .form-title {
+          animation: fadeInUp 0.5s ease-out 0.1s both;
+        }
+
+        .form-subtitle {
+          animation: fadeInUp 0.5s ease-out 0.2s both;
+        }
+
+        .form-group {
+          animation: fadeInUp 0.5s ease-out both;
+        }
+
+        .form-group:nth-child(1) { animation-delay: 0.3s; }
+        .form-group:nth-child(2) { animation-delay: 0.4s; }
+        .form-group:nth-child(3) { animation-delay: 0.5s; }
+        .form-group:nth-child(4) { animation-delay: 0.6s; }
+        .form-group:nth-child(5) { animation-delay: 0.65s; }
+
+        .submit-button {
+          animation: fadeInUp 0.5s ease-out 0.75s both;
+        }
+
+        .toggle-link {
+          animation: fadeInUp 0.5s ease-out 0.85s both;
+        }
+
+        .social-buttons {
+          animation: fadeInUp 0.5s ease-out 0.8s both;
+        }
+
+        .auth-input {
+          position: relative;
+          overflow: hidden;
+        }
+
+        .auth-input::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: -100%;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+          transition: left 0.5s;
+        }
+
+        .auth-input:focus::before {
+          left: 100%;
+        }
+
+        .logo-container {
+          animation: float 3s ease-in-out infinite;
+        }
+
+        .heading-text {
+          animation: fadeInUp 0.5s ease-out 0.15s both;
+        }
+
+        .subheading-text {
+          animation: fadeInUp 0.5s ease-out 0.25s both;
+        }
+
+        .input-wrapper {
+          position: relative;
+        }
+
+        .input-wrapper::after {
+          content: '';
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          width: 0;
+          height: 2px;
+          background: linear-gradient(90deg, #1e293b, #f59e0b);
+          transition: width 0.3s ease-out;
+        }
+
+        .input-wrapper:focus-within::after {
+          width: 100%;
+        }
+
+        .input-wrapper.error input {
+          animation: shake 0.4s ease-in-out;
+        }
+
+        .error-message {
+          animation: slideInLeft 0.3s ease-out;
+        }
+
+        .button-glow:hover {
+          box-shadow: 0 20px 40px rgba(15, 23, 42, 0.3), 0 0 20px rgba(251, 146, 60, 0.15);
+        }
+
+        .toggle-text:hover {
+          transform: translateX(2px);
+        }
+
+        .success-overlay {
+          animation: successPop 0.5s ease-out;
+        }
+
+        .confetti-piece {
+          animation: confetti 2s ease-out forwards;
+        }
+
+        .modal-overlay {
+          animation: fadeInUp 0.3s ease-out;
+        }
+
+        .password-strength-bar {
+          transition: width 0.3s ease, background-color 0.3s ease;
+        }
+
+        .float {
+          animation: float 3s ease-in-out infinite;
+        }
+      `}</style>
+
+      {/* Success Animation */}
+      {showSuccess && (
+        <div className="fixed inset-0 pointer-events-none flex items-center justify-center z-50">
+          <div className="success-overlay">
+            <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center text-white text-4xl">
+              ✓
+            </div>
+          </div>
+          {[...Array(8)].map((_, i) => (
+            <div
+              key={i}
+              className="confetti-piece fixed w-2 h-2 bg-green-500 rounded-full"
+              style={{
+                left: '50%',
+                top: '50%',
+                marginLeft: `${(i - 4) * 30}px`,
+                animationDelay: `${i * 0.1}s`,
+              }}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Forgot Password Modal */}
+      {showForgotModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-6">
+          <div className="modal-overlay bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl">
+            <h3 className="text-2xl font-serif font-bold text-slate-900 mb-2">Reset Password</h3>
+            <p className="text-slate-500 mb-6">Enter your email to receive a password reset link</p>
+            <form onSubmit={handleForgotPassword} className="space-y-4">
+              <div className="input-wrapper">
+                <input
+                  type="email"
+                  value={forgotEmail}
+                  onChange={(e) => setForgotEmail(e.target.value)}
+                  required
+                  className="auth-input w-full p-3 bg-slate-50 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 outline-none transition-all font-medium text-slate-800"
+                  placeholder="your@email.com"
+                />
+              </div>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowForgotModal(false)}
+                  className="flex-1 px-4 py-2.5 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2.5 bg-amber-500 text-white font-bold rounded-xl hover:bg-amber-600 transition-all"
+                >
+                  Send Link
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      <div className="bg-white w-full max-w-6xl rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col md:flex-row min-h-[700px] border border-slate-100 auth-container">
+        {/* Left Panel */}
+        <div className="md:w-5/12 bg-slate-900 relative overflow-hidden p-12 text-white flex flex-col justify-between left-panel">
           <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
-          <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/20 rounded-full blur-3xl -mr-16 -mt-16"></div>
+          <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/20 rounded-full blur-3xl -mr-16 -mt-16 animate-pulse"></div>
+          <div className="absolute bottom-0 left-0 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl -ml-32 -mb-32"></div>
           <div className="relative z-10">
-            <div className="flex items-center gap-3 mb-10">
-              <div className="bg-amber-500 p-2 rounded-lg shadow-lg"><Gavel className="w-6 h-6 text-slate-900" /></div>
+            <div className="flex items-center gap-3 mb-12 logo-container">
+              <div className="bg-white/90 p-2 rounded-xl shadow-lg hover:scale-110 transition-transform duration-300">
+                <img src={LOGO_URL} alt="Nyay Saathi logo" className="w-10 h-10 object-contain" />
+              </div>
               <h1 className="text-2xl font-serif font-bold tracking-tight">Nyay Saathi</h1>
             </div>
-            <h2 className="text-4xl font-serif font-bold mb-6 leading-tight">Access Justice <br/>Anytime, Anywhere.</h2>
-            <p className="text-slate-300 font-light text-lg">Your personal legal intelligence platform.</p>
+            <h2 className="text-4xl font-serif font-bold mb-6 leading-tight heading-text">Access Justice <br/>Anytime, Anywhere.</h2>
+            <p className="text-slate-300 font-light text-lg subheading-text">Your personal legal intelligence platform.</p>
+            
+            {/* Features List */}
+            <div className="mt-12 space-y-4 text-sm">
+              <div className="flex items-start gap-3 opacity-80 hover:opacity-100 transition-opacity">
+                <div className="w-5 h-5 rounded-full bg-amber-500 flex items-center justify-center flex-shrink-0 mt-0.5 text-xs font-bold">✓</div>
+                <span>AI-powered legal guidance</span>
+              </div>
+              <div className="flex items-start gap-3 opacity-80 hover:opacity-100 transition-opacity">
+                <div className="w-5 h-5 rounded-full bg-amber-500 flex items-center justify-center flex-shrink-0 mt-0.5 text-xs font-bold">✓</div>
+                <span>Case outcome predictions</span>
+              </div>
+              <div className="flex items-start gap-3 opacity-80 hover:opacity-100 transition-opacity">
+                <div className="w-5 h-5 rounded-full bg-amber-500 flex items-center justify-center flex-shrink-0 mt-0.5 text-xs font-bold">✓</div>
+                <span>Connect with verified advocates</span>
+              </div>
+              <div className="flex items-start gap-3 opacity-80 hover:opacity-100 transition-opacity">
+                <div className="w-5 h-5 rounded-full bg-amber-500 flex items-center justify-center flex-shrink-0 mt-0.5 text-xs font-bold">✓</div>
+                <span>Learn legal rights instantly</span>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="md:w-7/12 p-12 md:p-16 flex flex-col justify-center bg-white">
+        {/* Right Panel - Login Form */}
+        <div className="md:w-7/12 p-12 md:p-16 flex flex-col justify-center bg-white right-panel overflow-y-auto max-h-[700px]">
           <div className="max-w-md mx-auto w-full">
-            <h3 className="text-3xl font-serif font-bold text-slate-900 mb-3">{isLogin ? 'Welcome Back' : 'Create Account'}</h3>
-            <p className="text-slate-500 mb-10 text-lg">{isLogin ? 'Enter your credentials to access your workspace.' : 'Get started with your free legal assistant today.'}</p>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-slate-900 ml-1">Email Address</label>
-                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/20 focus:border-slate-900 outline-none transition-all font-medium text-slate-800" placeholder="name@example.com" />
+            <h3 className="text-3xl font-serif font-bold text-slate-900 mb-2 form-title">{isLogin ? 'Welcome Back' : 'Create Account'}</h3>
+            <p className="text-slate-500 mb-8 text-base form-subtitle">{isLogin ? 'Access your legal assistance portal' : 'Start your legal empowerment journey'}</p>
+
+            <form onSubmit={handleSubmit} className="space-y-5">
+              {/* Email Field */}
+              <div className={`space-y-2 form-group input-wrapper ${validationErrors.email ? 'error' : ''}`}>
+                <label className="text-sm font-semibold text-slate-900 ml-1 block">Email Address</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (validationErrors.email) setValidationErrors({ ...validationErrors, email: undefined });
+                  }}
+                  className="auth-input w-full p-4 bg-slate-50 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 outline-none transition-all font-medium text-slate-800 placeholder:text-slate-400 hover:border-slate-300"
+                  placeholder="name@example.com"
+                />
+                {validationErrors.email && <p className="text-red-500 text-xs ml-1 error-message">{validationErrors.email}</p>}
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-slate-900 ml-1">Password</label>
-                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900/20 focus:border-slate-900 outline-none transition-all font-medium text-slate-800" placeholder="••••••••" />
+
+              {/* Password Field */}
+              <div className={`space-y-2 form-group input-wrapper ${validationErrors.password ? 'error' : ''}`}>
+                <div className="flex justify-between items-center">
+                  <label className="text-sm font-semibold text-slate-900 ml-1">Password</label>
+                  {!isLogin && password && (
+                    <span className={`text-xs font-bold ${strengthData.color === 'bg-red-500' ? 'text-red-500' : strengthData.color === 'bg-yellow-500' ? 'text-yellow-500' : strengthData.color === 'bg-blue-500' ? 'text-blue-500' : 'text-green-500'}`}>
+                      {strengthData.label}
+                    </span>
+                  )}
+                </div>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      if (validationErrors.password) setValidationErrors({ ...validationErrors, password: undefined });
+                    }}
+                    className="auth-input w-full p-4 bg-slate-50 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 outline-none transition-all font-medium text-slate-800 placeholder:text-slate-400 hover:border-slate-300 pr-12"
+                    placeholder="••••••••"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                  >
+                    {showPassword ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
+                  </button>
+                </div>
+                {validationErrors.password && <p className="text-red-500 text-xs ml-1 error-message">{validationErrors.password}</p>}
+
+                {/* Password Strength Bar */}
+                {!isLogin && password && (
+                  <div className="mt-2 flex gap-1">
+                    {[...Array(4)].map((_, i) => (
+                      <div
+                        key={i}
+                        className={`h-1 flex-1 rounded-full transition-all ${
+                          i < strengthData.score ? strengthData.color : 'bg-slate-200'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
-              {error && <div className="p-4 bg-red-50 text-red-600 text-sm rounded-xl border border-red-100 flex items-center gap-2"><div className="w-1.5 h-1.5 bg-red-500 rounded-full"></div>{error}</div>}
-              <button type="submit" disabled={isLoading} className="w-full bg-slate-900 text-white font-bold py-4 rounded-xl shadow-xl shadow-slate-900/20 hover:bg-slate-800 hover:shadow-2xl hover:-translate-y-0.5 transition-all disabled:opacity-70 flex items-center justify-center gap-2 text-lg">
-                {isLoading ? <Loader2 className="animate-spin w-5 h-5" /> : (isLogin ? 'Sign In' : 'Create Account')}
-                {!isLoading && <ArrowRight className="w-5 h-5" />}
+
+              {/* Remember Me & Forgot Password */}
+              {isLogin && (
+                <div className="form-group flex items-center justify-between">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                      className="w-4 h-4 rounded border-slate-300 text-amber-500 cursor-pointer"
+                    />
+                    <span className="text-sm text-slate-600 font-medium">Remember me</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowForgotModal(true)}
+                    className="text-sm text-amber-600 hover:text-amber-700 font-medium transition-colors"
+                  >
+                    Forgot Password?
+                  </button>
+                </div>
+              )}
+
+              {/* Error Message */}
+              {error && (
+                <div className="p-4 bg-red-50 text-red-600 text-sm rounded-xl border border-red-100 flex items-center gap-2 error-message form-group">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  {error}
+                </div>
+              )}
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="submit-button w-full bg-slate-900 text-white font-bold py-4 rounded-xl shadow-xl shadow-slate-900/20 hover:bg-slate-800 hover:shadow-2xl hover:-translate-y-0.5 transition-all disabled:opacity-70 disabled:hover:translate-y-0 flex items-center justify-center gap-2 text-lg button-glow group relative overflow-hidden"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-500"></div>
+                <div className="relative flex items-center gap-2">
+                  {isLoading ? <Loader2 className="animate-spin w-5 h-5" /> : (isLogin ? 'Sign In' : 'Create Account')}
+                  {!isLoading && <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />}
+                </div>
               </button>
+
+              {/* Divider */}
+              <div className="relative form-group">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-slate-200"></div>
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-2 bg-white text-slate-500">Or continue with</span>
+                </div>
+              </div>
+
+              {/* Social Login Buttons */}
+              <div className="social-buttons grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={handleGoogleLogin}
+                  disabled={isLoading}
+                  className="flex items-center justify-center gap-2 p-3 border-2 border-slate-200 rounded-xl hover:border-amber-500 hover:bg-amber-50 active:scale-95 disabled:opacity-70 transition-all font-medium text-slate-700 group"
+                >
+                  {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
+                    <>
+                      <svg className="w-5 h-5" viewBox="0 0 24 24">
+                        <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                        <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                        <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                        <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                      </svg>
+                      <span className="hidden sm:inline text-sm">Google</span>
+                    </>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleGithubLogin}
+                  disabled={isLoading}
+                  className="flex items-center justify-center gap-2 p-3 border-2 border-slate-200 rounded-xl hover:border-amber-500 hover:bg-amber-50 active:scale-95 disabled:opacity-70 transition-all font-medium text-slate-700 group"
+                >
+                  {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
+                    <>
+                      <Github className="w-5 h-5" />
+                      <span className="hidden sm:inline text-sm">GitHub</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Toggle Login/Signup */}
+              <div className="toggle-link text-center">
+                <span className="text-slate-500 text-sm">{isLogin ? "New to Nyay Saathi? " : "Already have an account? "}</span>
+                <button
+                  onClick={() => {
+                    setIsLogin(!isLogin);
+                    setValidationErrors({});
+                    setError(null);
+                  }}
+                  className="text-slate-900 font-bold hover:text-amber-600 transition-all duration-300 toggle-text inline-block hover:scale-105 text-sm"
+                >
+                  {isLogin ? 'Create Account' : 'Sign In'}
+                </button>
+              </div>
+
+              {/* Terms & Conditions */}
+              {!isLogin && (
+                <p className="text-xs text-slate-500 text-center form-group">
+                  By creating an account, you agree to our{' '}
+                  <button className="text-amber-600 hover:underline font-medium">Terms of Service</button> and{' '}
+                  <button className="text-amber-600 hover:underline font-medium">Privacy Policy</button>
+                </p>
+              )}
             </form>
-            <div className="mt-10 text-center">
-              <span className="text-slate-500">{isLogin ? "New to Nyay Saathi? " : "Already have an account? "}</span>
-              <button onClick={() => setIsLogin(!isLogin)} className="text-slate-900 font-bold hover:text-amber-600 transition-colors">{isLogin ? 'Create Account' : 'Sign In'}</button>
-            </div>
           </div>
         </div>
       </div>
@@ -438,31 +1052,139 @@ const AuthPage = () => {
 // --- NEW FEATURE 1: GAMIFIED LEGAL LITERACY ---
 
 const LegalLiteracy = () => {
+  const { currentUser } = useAuth();
   const [activeModule, setActiveModule] = useState<any>(null);
-  const [currentQ, setCurrentQ] = useState(0);
+  const [currentStep, setCurrentStep] = useState(0);
   const [score, setScore] = useState(0);
   const [completedModules, setCompletedModules] = useState<number[]>([]);
   const [showResult, setShowResult] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [leaderboard, setLeaderboard] = useState<any[]>([]);
+  const [orderSelections, setOrderSelections] = useState<number[]>([]);
+  const [matchSelections, setMatchSelections] = useState<string[]>([]);
+  const [textAnswer, setTextAnswer] = useState('');
+  const totalModules = LEARNING_MODULES.length;
+
+  // Realtime progress sync
+  useEffect(() => {
+    if (!currentUser) return;
+    const progressRef = doc(db, 'users', currentUser.uid, 'progress', 'nyayVidya');
+    const unsub = onSnapshot(progressRef, (snap) => {
+      const data = snap.data();
+      if (data?.completedModules) setCompletedModules(data.completedModules);
+      if (typeof data?.lastScore === 'number') setScore(data.lastScore);
+    });
+    return () => unsub();
+  }, [currentUser]);
+
+  // Live leaderboard
+  useEffect(() => {
+    if (!currentUser) return;
+    const scoresRef = collection(db, 'leaderboards', 'nyayVidya', 'scores');
+    const q = query(scoresRef, orderBy('xp', 'desc'), limit(5));
+    const unsub = onSnapshot(q, (snap) => {
+      setLeaderboard(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+    return () => unsub();
+  }, [currentUser]);
+
+  const calcXp = (modules: number[]) => {
+    return modules.reduce((sum, id) => sum + (LEARNING_MODULES.find(m => m.id === id)?.xp || 0), 0);
+  };
+
+  const persistProgress = async (modules: number[], lastScoreVal: number) => {
+    if (!currentUser) return;
+    try {
+      setIsSaving(true);
+      const progressRef = doc(db, 'users', currentUser.uid, 'progress', 'nyayVidya');
+      const xpVal = calcXp(modules);
+      await setDoc(progressRef, {
+        completedModules: modules,
+        lastScore: lastScoreVal,
+        xp: xpVal,
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+
+      const leaderRef = doc(db, 'leaderboards', 'nyayVidya', 'scores', currentUser.uid);
+      await setDoc(leaderRef, {
+        uid: currentUser.uid,
+        name: currentUser.displayName || currentUser.email?.split('@')[0] || 'Citizen',
+        xp: xpVal,
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+    } catch (err) {
+      console.error('Failed to save progress', err);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const startModule = (mod: any) => {
     setActiveModule(mod);
-    setCurrentQ(0);
+    setCurrentStep(0);
     setScore(0);
     setShowResult(false);
   };
 
-  const handleAnswer = (idx: number) => {
-    if (idx === activeModule.questions[currentQ].ans) {
-      setScore(s => s + 10);
+  useEffect(() => {
+    if (!activeModule) return;
+    if (activeModule.type === 'ordering') {
+      setOrderSelections(new Array(activeModule.steps.length).fill(0));
     }
-    
-    if (currentQ + 1 < activeModule.questions.length) {
-      setCurrentQ(c => c + 1);
+    if (activeModule.type === 'match') {
+      setMatchSelections(new Array(activeModule.pairs.length).fill(''));
+    }
+    if (activeModule.type === 'fill') {
+      setTextAnswer('');
+    }
+  }, [activeModule, currentStep]);
+
+  const getTotalSteps = (mod: any) => {
+    if (!mod) return 0;
+    if (mod.type === 'quiz') return mod.questions?.length || 0;
+    if (mod.type === 'scenario') return mod.scenarios?.length || 0;
+    if (mod.type === 'rapid') return mod.items?.length || 0;
+    if (mod.type === 'ordering') return 1;
+    if (mod.type === 'match') return 1;
+    if (mod.type === 'fill') return mod.prompts?.length || 0;
+    return 0;
+  };
+
+  const handleAnswer = (answer: any) => {
+    if (!activeModule) return;
+    let isCorrect = false;
+
+    if (activeModule.type === 'quiz') {
+      const q = activeModule.questions[currentStep];
+      isCorrect = answer === q.ans;
+    } else if (activeModule.type === 'scenario') {
+      const s = activeModule.scenarios[currentStep];
+      isCorrect = answer === s.ans;
+    } else if (activeModule.type === 'rapid') {
+      const item = activeModule.items[currentStep];
+      isCorrect = answer === item.ans;
+    } else if (activeModule.type === 'ordering') {
+      const expected = activeModule.correctOrder;
+      isCorrect = expected.every((stepIndex: number, pos: number) => orderSelections[stepIndex] === pos + 1);
+    } else if (activeModule.type === 'match') {
+      isCorrect = activeModule.pairs.every((p: any, idx: number) => matchSelections[idx] === p.right);
+    } else if (activeModule.type === 'fill') {
+      const prompt = activeModule.prompts[currentStep];
+      isCorrect = textAnswer.trim().toLowerCase() === String(prompt.answer).trim().toLowerCase();
+    }
+
+    const nextScore = isCorrect ? score + 10 : score;
+    setScore(nextScore);
+    const totalSteps = getTotalSteps(activeModule);
+
+    if (currentStep + 1 < totalSteps) {
+      setCurrentStep(c => c + 1);
     } else {
       setShowResult(true);
-      if (!completedModules.includes(activeModule.id)) {
-        setCompletedModules([...completedModules, activeModule.id]);
-      }
+      const alreadyDone = completedModules.includes(activeModule.id);
+      const updatedModules = alreadyDone ? completedModules : [...completedModules, activeModule.id];
+      setCompletedModules(updatedModules);
+      persistProgress(updatedModules, nextScore);
     }
   };
 
@@ -477,27 +1199,69 @@ const LegalLiteracy = () => {
               <div className="p-3 bg-amber-500 rounded-full text-slate-900"><Trophy className="w-8 h-8"/></div>
               <div>
                 <h3 className="text-xl font-bold font-serif">Your Progress</h3>
-                <p className="text-amber-400 text-sm font-medium">{completedModules.length * 100} XP Earned</p>
+                <p className="text-amber-400 text-sm font-medium">{calcXp(completedModules)} XP Earned</p>
               </div>
             </div>
             <div className="space-y-4">
               <div className="flex justify-between text-sm mb-1">
                 <span>Citizen Level</span>
-                <span>{completedModules.length}/5 Modules</span>
+                <span>{completedModules.length}/{totalModules} Modules</span>
               </div>
               <div className="h-3 bg-slate-700 rounded-full overflow-hidden">
-                <div className="h-full bg-amber-500 transition-all duration-1000" style={{ width: `${(completedModules.length / 5) * 100}%` }}></div>
+                <div className="h-full bg-amber-500 transition-all duration-1000" style={{ width: `${(completedModules.length / totalModules) * 100}%` }}></div>
               </div>
             </div>
           </Card>
 
           <Card className="p-6">
-             <h4 className="font-bold text-slate-900 mb-4 flex items-center gap-2"><Medal className="w-5 h-5 text-amber-500"/> Badges</h4>
-             <div className="grid grid-cols-3 gap-2">
-                {completedModules.length > 0 ? <div className="text-center"><div className="w-12 h-12 mx-auto bg-amber-100 rounded-full flex items-center justify-center mb-1 text-2xl">🥇</div><span className="text-xs">First Step</span></div> : <div className="text-center opacity-50"><div className="w-12 h-12 mx-auto bg-slate-100 rounded-full mb-1"></div><span className="text-xs">Locked</span></div>}
-                {completedModules.length >= 3 ? <div className="text-center"><div className="w-12 h-12 mx-auto bg-slate-200 rounded-full flex items-center justify-center mb-1 text-2xl">⚖️</div><span className="text-xs">Advocate</span></div> : <div className="text-center opacity-50"><div className="w-12 h-12 mx-auto bg-slate-100 rounded-full mb-1"></div><span className="text-xs">Locked</span></div>}
-                <div className="text-center opacity-50"><div className="w-12 h-12 mx-auto bg-slate-100 rounded-full mb-1"></div><span className="text-xs">Locked</span></div>
-             </div>
+            <h4 className="font-bold text-slate-900 mb-4 flex items-center gap-2"><Zap className="w-5 h-5 text-amber-500"/> Live Leaderboard</h4>
+            <div className="space-y-3">
+              {leaderboard.length === 0 ? (
+                <div className="text-sm text-slate-500">No scores yet. Be the first!</div>
+              ) : (
+                leaderboard.map((u: any, idx: number) => (
+                  <div key={u.id || idx} className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-full bg-amber-50 text-amber-700 flex items-center justify-center text-xs font-bold">{idx + 1}</div>
+                      <span className="font-medium text-slate-700">{u.name || 'Citizen'}</span>
+                    </div>
+                    <span className="font-bold text-slate-900">{u.xp || 0} XP</span>
+                  </div>
+                ))
+              )}
+            </div>
+          </Card>
+
+          <Card className="p-6">
+            <h4 className="font-bold text-slate-900 mb-4 flex items-center gap-2"><Medal className="w-5 h-5 text-amber-500"/> Badges</h4>
+            <div className="grid grid-cols-3 gap-2">
+              {completedModules.length > 0 ? (
+                <div className="text-center">
+                  <div className="w-12 h-12 mx-auto bg-amber-100 rounded-full flex items-center justify-center mb-1 text-2xl">🥇</div>
+                  <span className="text-xs">First Step</span>
+                </div>
+              ) : (
+                <div className="text-center opacity-50">
+                  <div className="w-12 h-12 mx-auto bg-slate-100 rounded-full mb-1"></div>
+                  <span className="text-xs">Locked</span>
+                </div>
+              )}
+              {completedModules.length >= 3 ? (
+                <div className="text-center">
+                  <div className="w-12 h-12 mx-auto bg-slate-200 rounded-full flex items-center justify-center mb-1 text-2xl">⚖️</div>
+                  <span className="text-xs">Advocate</span>
+                </div>
+              ) : (
+                <div className="text-center opacity-50">
+                  <div className="w-12 h-12 mx-auto bg-slate-100 rounded-full mb-1"></div>
+                  <span className="text-xs">Locked</span>
+                </div>
+              )}
+              <div className="text-center opacity-50">
+                <div className="w-12 h-12 mx-auto bg-slate-100 rounded-full mb-1"></div>
+                <span className="text-xs">Locked</span>
+              </div>
+            </div>
           </Card>
         </div>
 
@@ -506,8 +1270,8 @@ const LegalLiteracy = () => {
           {!activeModule ? (
             <div className="grid md:grid-cols-2 gap-6">
               {LEARNING_MODULES.map((mod) => (
-                <Card key={mod.id} className="p-6 hover:scale-[1.02] transition-transform cursor-pointer group" >
-                   <div onClick={() => startModule(mod)}>
+                <Card key={mod.id} className="p-6 hover:scale-[1.02] transition-transform cursor-pointer group">
+                  <div onClick={() => startModule(mod)}>
                     <div className="flex justify-between items-start mb-4">
                       <div className="p-3 bg-slate-100 rounded-xl text-slate-900 group-hover:bg-amber-500 group-hover:text-white transition-colors">
                         <mod.icon className="w-8 h-8"/>
@@ -516,8 +1280,11 @@ const LegalLiteracy = () => {
                     </div>
                     <h3 className="text-xl font-bold text-slate-900 mb-2">{mod.title}</h3>
                     <p className="text-slate-500 text-sm mb-4">{mod.desc}</p>
-                    <div className="text-xs font-bold text-amber-600 bg-amber-50 inline-block px-3 py-1 rounded-full">+{mod.xp} XP</div>
-                   </div>
+                    <div className="flex items-center gap-2">
+                      <div className="text-xs font-bold text-amber-600 bg-amber-50 inline-block px-3 py-1 rounded-full">+{mod.xp} XP</div>
+                      <div className="text-[11px] font-bold uppercase tracking-widest text-slate-400">{mod.type}</div>
+                    </div>
+                  </div>
                 </Card>
               ))}
             </div>
@@ -532,22 +1299,164 @@ const LegalLiteracy = () => {
                 </div>
               ) : (
                 <div className="max-w-xl mx-auto">
-                   <div className="flex justify-between items-center mb-8">
-                      <span className="text-sm font-bold text-slate-400 uppercase tracking-widest">Question {currentQ + 1}/{activeModule.questions.length}</span>
-                      <button onClick={() => setActiveModule(null)} className="text-slate-400 hover:text-red-500"><X className="w-6 h-6"/></button>
-                   </div>
-                   <h3 className="text-2xl font-bold text-slate-900 mb-8 leading-snug">{activeModule.questions[currentQ].q}</h3>
-                   <div className="space-y-4">
-                      {activeModule.questions[currentQ].options.map((opt: string, idx: number) => (
-                        <button 
-                          key={idx} 
-                          onClick={() => handleAnswer(idx)}
-                          className="w-full text-left p-4 rounded-xl border-2 border-slate-100 hover:border-amber-500 hover:bg-amber-50 transition-all font-medium text-slate-700"
+                  <div className="flex justify-between items-center mb-6">
+                    <button
+                      onClick={() => setActiveModule(null)}
+                      className="text-sm font-bold text-slate-600 hover:text-slate-900 bg-slate-100 px-3 py-1.5 rounded-full"
+                    >
+                      ← Back to Dashboard
+                    </button>
+                    <span className="text-sm font-bold text-slate-400 uppercase tracking-widest">Step {currentStep + 1}/{getTotalSteps(activeModule)}</span>
+                    <button onClick={() => setActiveModule(null)} className="text-slate-400 hover:text-red-500"><X className="w-6 h-6"/></button>
+                  </div>
+
+                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden mb-8">
+                    <div className="h-full bg-amber-500 transition-all" style={{ width: `${((currentStep + 1) / getTotalSteps(activeModule)) * 100}%` }}></div>
+                  </div>
+
+                  {activeModule.type === 'quiz' && (
+                    <>
+                      <h3 className="text-2xl font-bold text-slate-900 mb-8 leading-snug">{activeModule.questions[currentStep].q}</h3>
+                      <div className="space-y-4">
+                        {activeModule.questions[currentStep].options.map((opt: string, idx: number) => (
+                          <button
+                            key={idx}
+                            onClick={() => handleAnswer(idx)}
+                            className="w-full text-left p-4 rounded-xl border-2 border-slate-100 hover:border-amber-500 hover:bg-amber-50 transition-all font-medium text-slate-700"
+                          >
+                            {opt}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+
+                  {activeModule.type === 'scenario' && (
+                    <>
+                      <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 text-slate-700 mb-6">
+                        {activeModule.scenarios[currentStep].story}
+                      </div>
+                      <h3 className="text-xl font-bold text-slate-900 mb-6">{activeModule.scenarios[currentStep].question}</h3>
+                      <div className="space-y-4">
+                        {activeModule.scenarios[currentStep].options.map((opt: string, idx: number) => (
+                          <button
+                            key={idx}
+                            onClick={() => handleAnswer(idx)}
+                            className="w-full text-left p-4 rounded-xl border-2 border-slate-100 hover:border-amber-500 hover:bg-amber-50 transition-all font-medium text-slate-700"
+                          >
+                            {opt}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+
+                  {activeModule.type === 'rapid' && (
+                    <>
+                      <h3 className="text-2xl font-bold text-slate-900 mb-6 leading-snug">{activeModule.items[currentStep].statement}</h3>
+                      <div className="grid grid-cols-2 gap-4">
+                        <button
+                          onClick={() => handleAnswer(true)}
+                          className="w-full py-4 rounded-xl border-2 border-slate-100 hover:border-green-500 hover:bg-green-50 transition-all font-bold text-slate-700"
                         >
-                          {opt}
+                          True
                         </button>
-                      ))}
-                   </div>
+                        <button
+                          onClick={() => handleAnswer(false)}
+                          className="w-full py-4 rounded-xl border-2 border-slate-100 hover:border-red-500 hover:bg-red-50 transition-all font-bold text-slate-700"
+                        >
+                          False
+                        </button>
+                      </div>
+                    </>
+                  )}
+
+                  {activeModule.type === 'ordering' && (
+                    <>
+                      <h3 className="text-2xl font-bold text-slate-900 mb-6 leading-snug">Arrange the steps in correct order</h3>
+                      <div className="space-y-4">
+                        {activeModule.steps.map((step: string, idx: number) => (
+                          <div key={idx} className="flex items-center gap-4 p-4 rounded-xl border-2 border-slate-100">
+                            <select
+                              value={orderSelections[idx] || 0}
+                              onChange={(e) => {
+                                const next = [...orderSelections];
+                                next[idx] = Number(e.target.value);
+                                setOrderSelections(next);
+                              }}
+                              className="w-20 p-2 border border-slate-200 rounded-lg"
+                            >
+                              <option value={0}>#</option>
+                              {activeModule.steps.map((_: string, i: number) => (
+                                <option key={i} value={i + 1}>{i + 1}</option>
+                              ))}
+                            </select>
+                            <span className="text-slate-700 font-medium">{step}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <button
+                        onClick={() => handleAnswer('ordering')}
+                        disabled={orderSelections.some(v => v === 0)}
+                        className="mt-6 w-full py-3 bg-slate-900 text-white rounded-xl font-bold disabled:opacity-50"
+                      >
+                        Check & Next
+                      </button>
+                    </>
+                  )}
+
+                  {activeModule.type === 'match' && (
+                    <>
+                      <h3 className="text-2xl font-bold text-slate-900 mb-6 leading-snug">Match the correct right</h3>
+                      <div className="space-y-4">
+                        {activeModule.pairs.map((pair: any, idx: number) => (
+                          <div key={idx} className="flex flex-col md:flex-row md:items-center gap-3 p-4 rounded-xl border-2 border-slate-100">
+                            <span className="font-semibold text-slate-700 w-40">{pair.left}</span>
+                            <select
+                              value={matchSelections[idx] || ''}
+                              onChange={(e) => {
+                                const next = [...matchSelections];
+                                next[idx] = e.target.value;
+                                setMatchSelections(next);
+                              }}
+                              className="flex-1 p-2 border border-slate-200 rounded-lg"
+                            >
+                              <option value="">Select match</option>
+                              {activeModule.pairs.map((p: any, i: number) => (
+                                <option key={i} value={p.right}>{p.right}</option>
+                              ))}
+                            </select>
+                          </div>
+                        ))}
+                      </div>
+                      <button
+                        onClick={() => handleAnswer('match')}
+                        disabled={matchSelections.some(v => v === '')}
+                        className="mt-6 w-full py-3 bg-slate-900 text-white rounded-xl font-bold disabled:opacity-50"
+                      >
+                        Check & Next
+                      </button>
+                    </>
+                  )}
+
+                  {activeModule.type === 'fill' && (
+                    <>
+                      <h3 className="text-2xl font-bold text-slate-900 mb-6 leading-snug">{activeModule.prompts[currentStep].text}</h3>
+                      <input
+                        value={textAnswer}
+                        onChange={(e) => setTextAnswer(e.target.value)}
+                        placeholder="Type your answer"
+                        className="w-full p-4 border-2 border-slate-100 rounded-xl"
+                      />
+                      <button
+                        onClick={() => handleAnswer('fill')}
+                        disabled={!textAnswer.trim()}
+                        className="mt-6 w-full py-3 bg-slate-900 text-white rounded-xl font-bold disabled:opacity-50"
+                      >
+                        Check & Next
+                      </button>
+                    </>
+                  )}
                 </div>
               )}
             </Card>
@@ -562,58 +1471,152 @@ const LegalLiteracy = () => {
 // --- NEW FEATURE 3: SMART LEGAL CHAT ---
 
 const SmartLegalChat = () => {
-  const [messages, setMessages] = useState<{role: 'user' | 'ai', text: string}[]>([
-    { role: 'ai', text: "Namaste! I am your AI Legal Assistant. You can ask me about Indian laws, filing FIRs, property disputes, or anything legal. How can I help you today?" }
+  const starterPrompts = [
+    "Draft a simple FIR for theft of a mobile phone",
+    "What to do if a landlord is refusing to return my deposit?",
+    "Steps to file a domestic violence complaint in India",
+    "Explain Section 420 IPC and possible defenses",
+    "What are my rights during police arrest under CrPC?"
+  ];
+
+  const [messages, setMessages] = useState<Array<{ role: 'user' | 'ai'; text: string; sources?: any[] }>>([
+    {
+      role: 'ai',
+      text: "Namaste! I am your AI Legal Assistant. Ask me about FIRs, property disputes, contracts, consumer complaints, or your rights. I will keep it concise and practical."
+    }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const endRef = useRef<any>(null);
+  const chatBodyRef = useRef<HTMLDivElement | null>(null);
+  const [preferredLanguage, setPreferredLanguage] = useState<'auto' | 'en' | 'hi' | 'mr'>('auto');
   const { currentUser } = useAuth();
 
   const scrollToBottom = () => {
-    endRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (chatBodyRef.current) {
+      chatBodyRef.current.scrollTop = chatBodyRef.current.scrollHeight;
+    }
   };
 
   useEffect(scrollToBottom, [messages]);
 
-  const handleSend = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim()) return;
+  const buildLocalContext = (userMsg: string) => {
+    const text = userMsg.toLowerCase();
+    const keywords = text.split(/\W+/).filter(Boolean).slice(0, 8);
+    const matchScore = (content: string) => {
+      const lowered = content.toLowerCase();
+      return keywords.reduce((score, k) => score + (lowered.includes(k) ? 1 : 0), 0);
+    };
 
-    const userMsg = input.trim();
+    const topIpc = ipcData
+      .map((item: any) => ({
+        ...item,
+        _score: matchScore(`${item.section} ${item.title} ${item.description}`)
+      }))
+      .filter((item: any) => item._score > 0)
+      .sort((a: any, b: any) => b._score - a._score)
+      .slice(0, 3);
+
+    const topRights = constitutionalRightsData
+      .map((item: any) => ({ ...item, _score: matchScore(`${item.article} ${item.title} ${item.description}`) }))
+      .filter((item: any) => item._score > 0)
+      .sort((a: any, b: any) => b._score - a._score)
+      .slice(0, 2);
+
+    const sectionsText = topIpc
+      .map((i: any) => `IPC Section ${i.section}: ${i.title} - ${i.description}`)
+      .join('\n');
+    const rightsText = topRights
+      .map((r: any) => `Constitution Article ${r.article || ''} ${r.title}: ${r.description}`)
+      .join('\n');
+
+    const combined = [sectionsText, rightsText].filter(Boolean).join('\n');
+    return combined.slice(0, 3500);
+  };
+
+  const sendMessage = async (promptText?: string) => {
+    const userMsg = (promptText ?? input).trim();
+    if (!userMsg) return;
+
+    const historyPayload = messages.slice(-6).map(m => ({ role: m.role, text: m.text }));
+    const localContext = buildLocalContext(userMsg);
+
     setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
     setInput('');
     setIsLoading(true);
 
     try {
-      const response = await fetch('http://localhost:8001/api/predict-case', {
+      const response = await fetch('http://localhost:8001/api/smart-chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ caseDescription: userMsg, userId: currentUser?.uid })
+        body: JSON.stringify({ message: userMsg, history: historyPayload, context: localContext, preferredLanguage })
       });
       const data = await response.json();
-      
-      setMessages(prev => [...prev, { role: 'ai', text: data.text }]);
-      
+
+      const aiText = data?.text || "I could not generate a response right now. Please try again.";
+      setMessages(prev => [...prev, { role: 'ai', text: aiText, sources: data?.sources }]);
+
       if (currentUser) {
         addDoc(collection(db, 'history', currentUser.uid, 'queries'), {
-          type: "Chat Query", query: userMsg, response: data.text, createdAt: serverTimestamp()
+          type: "SmartChat",
+          query: userMsg,
+          response: aiText,
+          createdAt: serverTimestamp()
         });
       }
-
     } catch (err) {
-      setMessages(prev => [...prev, { role: 'ai', text: "I apologize, but I am facing connection issues. Please try again later." }]);
+      console.error('Smart chat error:', err);
+      setMessages(prev => [...prev, { role: 'ai', text: "I am having trouble reaching the server. Please try again in a moment." }]);
     } finally {
       setIsLoading(false);
     }
   };
 
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    sendMessage();
+  };
+
   return (
-    <PageContainer title="Smart Legal Chat" subtitle="Chat with AI to understand your legal standing instantly.">
-      <Card className="h-[70vh] flex flex-col p-0 border-t-0 bg-slate-50">
-        
+    <PageContainer title="Smart Legal Chat" subtitle="Guided, concise legal answers with references to IPC/CrPC/Constitution when available.">
+      <Card className="h-[75vh] flex flex-col p-0 border-t-0 bg-slate-50">
+        {/* Starter prompts */}
+        <div className="px-6 pt-6 pb-4 border-b border-slate-100 bg-white/70 backdrop-blur sticky top-0 z-10">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div>
+              <p className="text-sm font-semibold text-slate-700">Try a quick question</p>
+              <p className="text-xs text-slate-500">Tap to auto-fill and send.</p>
+            </div>
+            <div className="flex items-center gap-3 flex-wrap">
+              <label className="text-xs font-semibold text-slate-600 flex items-center gap-2">
+                Answer language
+                <select
+                  value={preferredLanguage}
+                  onChange={(e) => setPreferredLanguage(e.target.value as any)}
+                  className="text-xs px-3 py-2 rounded-full bg-slate-100 border border-slate-200 text-slate-700 focus:outline-none"
+                >
+                  <option value="auto">Auto-detect</option>
+                  <option value="en">English</option>
+                  <option value="hi">Hindi</option>
+                  <option value="mr">Marathi</option>
+                </select>
+              </label>
+              <div className="flex gap-2 flex-wrap">
+                {starterPrompts.map((p, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => sendMessage(p)}
+                    className="text-xs px-3 py-2 rounded-full bg-slate-900 text-white hover:bg-slate-800 transition-all shadow-sm"
+                  >
+                    {p}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Chat Area */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div ref={chatBodyRef} className="flex-1 overflow-y-auto p-6 space-y-6">
           {messages.map((msg, i) => (
             <div key={i} className={`flex gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
               <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${msg.role === 'user' ? 'bg-slate-900 text-white' : 'bg-amber-500 text-white'}`}>
@@ -621,6 +1624,24 @@ const SmartLegalChat = () => {
               </div>
               <div className={`max-w-[80%] p-4 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap shadow-sm ${msg.role === 'user' ? 'bg-slate-900 text-white rounded-tr-none' : 'bg-white text-slate-700 rounded-tl-none border border-slate-100'}`}>
                 {msg.text}
+                {msg.sources?.length ? (
+                  <div className="mt-3 space-y-1 text-xs">
+                    <p className="text-slate-400 font-semibold">References</p>
+                    <div className="flex flex-wrap gap-2">
+                      {msg.sources.map((s: any, idx2: number) => (
+                        <a
+                          key={idx2}
+                          href={s.uri || '#'}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="px-2 py-1 rounded-full bg-slate-100 text-slate-600 hover:bg-amber-100 hover:text-amber-800 transition-colors"
+                        >
+                          {s.title || 'Source'}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
               </div>
             </div>
           ))}
@@ -634,12 +1655,11 @@ const SmartLegalChat = () => {
                </div>
             </div>
           )}
-          <div ref={endRef}></div>
         </div>
 
         {/* Input Area */}
         <div className="p-4 bg-white border-t border-slate-200">
-          <form onSubmit={handleSend} className="flex gap-3">
+          <form onSubmit={handleSubmit} className="flex gap-3">
             <input 
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -650,6 +1670,7 @@ const SmartLegalChat = () => {
               <Send className="w-6 h-6"/>
             </button>
           </form>
+          <p className="text-[11px] text-slate-400 mt-2">Outputs are informational. Not legal advice; consult a lawyer for case-specific guidance.</p>
         </div>
 
       </Card>
@@ -661,8 +1682,8 @@ const SmartLegalChat = () => {
 
 const CommunityForum = () => {
   const { currentUser } = useAuth();
-  // Initialize with MOCK data so it's not empty, but update with real data if available
-  const [posts, setPosts] = useState<any[]>(MOCK_FORUM_POSTS);
+  const [posts, setPosts] = useState<any[]>([]);
+  const [isPostsLoading, setIsPostsLoading] = useState(true);
   const [filter, setFilter] = useState("All");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newPost, setNewPost] = useState({ title: '', content: '', category: 'General' });
@@ -678,11 +1699,9 @@ const CommunityForum = () => {
     const q = query(collection(db, "forum_posts"), orderBy("createdAt", "desc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const realPosts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      // If we have real posts, use them. Otherwise keep showing MOCK posts + any real ones
-      if (realPosts.length > 0) {
-          setPosts(realPosts);
-      }
-    });
+      setPosts(realPosts);
+      setIsPostsLoading(false);
+    }, () => setIsPostsLoading(false));
     return () => unsubscribe();
   }, []);
 
@@ -708,6 +1727,16 @@ const CommunityForum = () => {
         alert("Please sign in to post on the forum.");
         return;
     }
+
+    // Validate form
+    if (!newPost.title.trim()) {
+        alert("Please enter a title for your discussion.");
+        return;
+    }
+    if (!newPost.content.trim()) {
+        alert("Please enter details for your discussion.");
+        return;
+    }
     
     setIsSubmitting(true);
     try {
@@ -724,7 +1753,10 @@ const CommunityForum = () => {
       setNewPost({ title: '', content: '', category: 'General' });
     } catch (error: any) {
       console.error("Error creating post:", error);
-      alert("Failed to create post. Please try again. " + error.message);
+      const errorMsg = error.code === 'permission-denied' 
+        ? "You don't have permission to post. Please ensure Firestore rules are updated correctly."
+        : error.message;
+      alert("Failed to create post. Please try again. " + errorMsg);
     } finally {
       setIsSubmitting(false);
     }
@@ -824,24 +1856,33 @@ const CommunityForum = () => {
             <button onClick={() => setIsCreateModalOpen(true)} className="w-full py-3 bg-slate-900 text-white font-bold rounded-xl shadow-lg hover:bg-slate-800 transition-all flex items-center justify-center gap-2 mb-6">
               <Plus className="w-5 h-5"/> New Discussion
             </button>
-            <div className="space-y-2">
+            <div className="space-y-3">
               <h4 className="font-bold text-slate-900 mb-2 flex items-center gap-2"><Filter className="w-4 h-4"/> Filter by Topic</h4>
-              {categories.map(cat => (
-                <button 
-                  key={cat}
-                  onClick={() => setFilter(cat)}
-                  className={`w-full text-left px-4 py-2 rounded-lg text-sm font-medium transition-all ${filter === cat ? 'bg-amber-100 text-amber-800' : 'text-slate-600 hover:bg-slate-50'}`}
-                >
-                  {cat}
-                </button>
-              ))}
+              <div className="grid grid-cols-1 gap-2">
+                {categories.map(cat => (
+                  <button 
+                    key={cat}
+                    onClick={() => setFilter(cat)}
+                    className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border text-sm font-semibold transition-all shadow-sm ${
+                      filter === cat
+                        ? 'bg-slate-900 text-white border-slate-900 shadow-lg shadow-slate-900/15'
+                        : 'bg-white text-slate-700 border-slate-200 hover:border-amber-400 hover:bg-amber-50/60'
+                    }`}
+                  >
+                    <span>{cat}</span>
+                    <span className={`w-2 h-2 rounded-full ${filter === cat ? 'bg-amber-300' : 'bg-slate-200'}`}></span>
+                  </button>
+                ))}
+              </div>
             </div>
           </Card>
         </div>
 
         {/* Main Feed */}
         <div className="lg:col-span-3 space-y-6">
-          {posts.length === 0 ? (
+          {isPostsLoading ? (
+            <div className="text-center text-slate-500 py-10">Loading discussions...</div>
+          ) : posts.length === 0 ? (
             <div className="text-center text-slate-500 py-10">No discussions yet. Be the first to post!</div>
           ) : (
             posts.filter(p => filter === "All" || p.category === filter).map(post => (
@@ -860,14 +1901,14 @@ const CommunityForum = () => {
                     <div className="flex items-center gap-3 text-xs mb-3 flex-wrap">
                       <span className="bg-slate-100 text-slate-700 px-2 py-1 rounded font-bold uppercase tracking-wider">{post.category}</span>
                       <span className="text-slate-500">• Posted by <span className="font-bold text-slate-800">{post.author}</span></span>
-                      <span className="text-slate-400">• {post.createdAt?.seconds ? new Date(post.createdAt.seconds * 1000).toLocaleDateString() : post.time || "Just now"}</span>
+                      <span className="text-slate-400">• {post.createdAt?.seconds ? new Date(post.createdAt.seconds * 1000).toLocaleDateString() : post.createdAt?.toDate?.().toLocaleDateString?.() || post.time || "Just now"}</span>
                     </div>
                     <h3 className="text-xl font-bold text-slate-900 mb-2 cursor-pointer hover:text-amber-600 transition-colors" onClick={() => setExpandedPostId(expandedPostId === post.id ? null : post.id)}>{post.title}</h3>
                     <p className="text-slate-600 text-sm mb-4 leading-relaxed">{post.content}</p>
                     
                     <div className="flex items-center gap-4 border-t border-slate-100 pt-4">
                       <button onClick={() => setExpandedPostId(expandedPostId === post.id ? null : post.id)} className="flex items-center gap-2 text-slate-500 hover:text-slate-900 text-sm font-medium transition-colors">
-                        <MessageSquare className="w-4 h-4"/> {post.commentCount || 0} Comments
+                        <MessageSquare className="w-4 h-4"/> {expandedPostId === post.id ? comments.length : (post.commentCount || 0)} Comments
                       </button>
                       <button onClick={() => handleShare(post)} className="flex items-center gap-2 text-slate-500 hover:text-slate-900 text-sm font-medium transition-colors">
                         <Share2 className="w-4 h-4"/> Share
@@ -1546,18 +2587,124 @@ const MultiLanguageVoice = ({ onNavigate }: { onNavigate: (page: string) => void
 
 const AdvocateFinder = ({ onProfileSelect }: { onProfileSelect: (lawyer: any) => void }) => {
   const [allLawyers, setAllLawyers] = useState<any[]>([]);
+  const [filteredLawyers, setFilteredLawyers] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [sourceUrl, setSourceUrl] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedSpecialty, setSelectedSpecialty] = useState<string>('all');
   
   useEffect(() => {
-    const unsubscribe = onSnapshot(query(collection(db, "advocates")), (snap) => {
-      setAllLawyers(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    });
-    return () => unsubscribe();
+    const fetchAdvocates = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const response = await fetch('http://localhost:8001/api/advocates');
+        if (!response.ok) {
+          const errResult = await response.json().catch(() => null);
+          throw new Error(errResult?.error || 'Failed to load advocates');
+        }
+        const result = await response.json();
+        if (result?.error) throw new Error(result.error);
+        const lawyers = Array.isArray(result.advocates) ? result.advocates : [];
+        setAllLawyers(lawyers);
+        setFilteredLawyers(lawyers);
+        setSourceUrl(result.sourceUrl || '');
+      } catch (err: any) {
+        setError(err?.message || 'Unable to load advocates list. Please try again.');
+        setAllLawyers([]);
+        setFilteredLawyers([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchAdvocates();
   }, []);
 
+  useEffect(() => {
+    let results = allLawyers;
+    
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      results = results.filter(lawyer => 
+        lawyer.name?.toLowerCase().includes(query) ||
+        lawyer.city?.toLowerCase().includes(query) ||
+        lawyer.specialty?.toLowerCase().includes(query) ||
+        lawyer.enrollmentNo?.toLowerCase().includes(query)
+      );
+    }
+    
+    if (selectedSpecialty !== 'all') {
+      results = results.filter(lawyer => lawyer.specialty === selectedSpecialty);
+    }
+    
+    setFilteredLawyers(results);
+  }, [searchQuery, selectedSpecialty, allLawyers]);
+
+  const specialties = ['all', ...Array.from(new Set(allLawyers.map(l => l.specialty).filter(Boolean)))];
+
   return (
-    <PageContainer title="Find an Advocate" subtitle="Connect with top-rated legal professionals.">
+    <PageContainer title="Find an Advocate" subtitle="Browse advocates from the official bar council list.">
+      {sourceUrl && (
+        <div className="mb-6 text-sm text-slate-500 flex items-center gap-2">
+          <ExternalLink className="w-4 h-4" />
+          Source: <a className="text-slate-900 font-semibold hover:underline" href={sourceUrl} target="_blank" rel="noreferrer">Official PDF list</a>
+        </div>
+      )}
+      {error && <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-600 rounded-xl">{error}</div>}
+      
+      {/* Search and Filter */}
+      {!isLoading && allLawyers.length > 0 && (
+        <div className="mb-8 flex flex-col md:flex-row gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-4 top-4 text-slate-400 w-5 h-5" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by name, city, specialty, or enrollment..."
+              className="w-full p-4 pl-12 bg-white border border-slate-200 rounded-xl shadow-sm outline-none focus:ring-2 focus:ring-slate-900/10 font-medium text-slate-800"
+            />
+          </div>
+          <select
+            value={selectedSpecialty}
+            onChange={(e) => setSelectedSpecialty(e.target.value)}
+            className="px-6 py-4 bg-white border border-slate-200 rounded-xl shadow-sm outline-none focus:ring-2 focus:ring-slate-900/10 font-medium text-slate-800 cursor-pointer"
+          >
+            {specialties.map(s => (
+              <option key={s} value={s}>{s === 'all' ? 'All Specialties' : s}</option>
+            ))}
+          </select>
+        </div>
+      )}
+      
+      {isLoading ? (
+        <div className="text-center py-20 text-slate-500">
+          <Loader2 className="w-6 h-6 animate-spin mx-auto mb-3" />
+          Loading advocates…
+        </div>
+      ) : filteredLawyers.length === 0 ? (
+        <div className="text-center py-20">
+          <Users className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+          <p className="text-slate-500 text-lg">
+            {searchQuery || selectedSpecialty !== 'all' ? 'No advocates match your filters.' : 'No advocates found.'}
+          </p>
+          {(searchQuery || selectedSpecialty !== 'all') && (
+            <button
+              onClick={() => { setSearchQuery(''); setSelectedSpecialty('all'); }}
+              className="mt-4 px-6 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-all"
+            >
+              Clear Filters
+            </button>
+          )}
+        </div>
+      ) : (
+      <div>
+        <div className="mb-4 text-sm text-slate-500">
+          Showing {filteredLawyers.length} of {allLawyers.length} advocates
+        </div>
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {allLawyers.map(lawyer => (
+        {filteredLawyers.map(lawyer => (
           <Card key={lawyer.id} className="p-8 hover:-translate-y-2 transition-all duration-300 group">
             <div className="flex items-center gap-5 mb-6">
               <div className="relative">
@@ -1570,20 +2717,18 @@ const AdvocateFinder = ({ onProfileSelect }: { onProfileSelect: (lawyer: any) =>
                 <div className="flex items-center gap-1 text-sm text-slate-500 mt-1"><Home className="w-3 h-3"/> {lawyer.city}</div>
               </div>
             </div>
-            <div className="flex justify-between text-sm text-slate-600 bg-slate-50 p-5 rounded-2xl mb-8 border border-slate-100">
-              <div className="text-center">
-                <strong className="block text-lg text-slate-900">{lawyer.experience}</strong>
-                <span className="text-xs uppercase tracking-wider text-slate-400">Years</span>
+            <div className="text-sm text-slate-600 bg-slate-50 p-5 rounded-2xl mb-8 border border-slate-100 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs uppercase tracking-wider text-slate-400">Enrollment</span>
+                <strong className="text-slate-900">{lawyer.enrollmentNo || 'N/A'}</strong>
               </div>
-              <div className="w-px bg-slate-200 h-8 self-center"></div>
-              <div className="text-center">
-                <strong className="block text-lg text-slate-900">{lawyer.casesWon}</strong>
-                <span className="text-xs uppercase tracking-wider text-slate-400">Won</span>
+              <div className="flex items-center justify-between">
+                <span className="text-xs uppercase tracking-wider text-slate-400">Phone</span>
+                <strong className="text-slate-900">{lawyer.phone || 'N/A'}</strong>
               </div>
-              <div className="w-px bg-slate-200 h-8 self-center"></div>
-              <div className="text-center">
-                <strong className="block text-lg text-amber-500 flex items-center justify-center gap-1">{lawyer.rating} <Star className="w-3 h-3 fill-current"/></strong>
-                <span className="text-xs uppercase tracking-wider text-slate-400">Rating</span>
+              <div className="flex items-center justify-between">
+                <span className="text-xs uppercase tracking-wider text-slate-400">Location</span>
+                <strong className="text-slate-900">{lawyer.city || 'N/A'}</strong>
               </div>
             </div>
             <button onClick={() => onProfileSelect(lawyer)} className="w-full py-4 bg-slate-900 text-white font-bold rounded-xl shadow-lg shadow-slate-900/20 hover:bg-slate-800 transition-all flex items-center justify-center gap-2 group-hover:scale-[1.02]">
@@ -1592,6 +2737,8 @@ const AdvocateFinder = ({ onProfileSelect }: { onProfileSelect: (lawyer: any) =>
           </Card>
         ))}
       </div>
+      </div>
+      )}
     </PageContainer>
   );
 };
@@ -1623,6 +2770,23 @@ const AdvocateProfile = ({ lawyer, onBack }: { lawyer: any, onBack: () => void }
             <p className="text-slate-600 leading-relaxed text-lg font-light">{lawyer.bio || "Experienced legal practitioner with a proven track record in high-stakes litigation..."}</p>
           </div>
           <div>
+            <h3 className="text-2xl font-bold text-slate-900 mb-4 border-b border-slate-100 pb-2">Contact & Enrollment</h3>
+            <div className="grid md:grid-cols-2 gap-4 text-slate-700 text-lg">
+              <div>
+                <div className="text-xs uppercase tracking-wider text-slate-400 mb-1">Enrollment No.</div>
+                <div className="font-semibold">{lawyer.enrollmentNo || 'N/A'}</div>
+              </div>
+              <div>
+                <div className="text-xs uppercase tracking-wider text-slate-400 mb-1">Phone</div>
+                <div className="font-semibold">{lawyer.phone || 'N/A'}</div>
+              </div>
+              <div className="md:col-span-2">
+                <div className="text-xs uppercase tracking-wider text-slate-400 mb-1">Address</div>
+                <div className="font-semibold">{lawyer.address || 'N/A'}</div>
+              </div>
+            </div>
+          </div>
+          <div>
             <h3 className="text-2xl font-bold text-slate-900 mb-4 border-b border-slate-100 pb-2">Credentials</h3>
             <ul className="list-disc pl-5 text-slate-700 space-y-2 text-lg">
               <li>{lawyer.education || "LL.B (Hons) - National Law School of India University"}</li>
@@ -1647,70 +2811,381 @@ const AdvocateProfile = ({ lawyer, onBack }: { lawyer: any, onBack: () => void }
 );
 
 const IPCLookup = () => {
+  const [mode, setMode] = useState<'explore' | 'incident'>('explore');
   const [search, setSearch] = useState('');
   const [results, setResults] = useState(ipcData.slice(0, 50));
   const [selected, setSelected] = useState<any>(null);
+  const [incidentText, setIncidentText] = useState('');
+  const [incidentMatches, setIncidentMatches] = useState<any[]>([]);
+  const [incidentAnalyzed, setIncidentAnalyzed] = useState(false);
+  const ranges = [
+    { label: 'All', min: 0, max: 9999 },
+    { label: '1-100', min: 1, max: 100 },
+    { label: '101-200', min: 101, max: 200 },
+    { label: '201-300', min: 201, max: 300 },
+    { label: '301-400', min: 301, max: 400 },
+    { label: '401-500', min: 401, max: 500 },
+  ];
+  const [rangeFilter, setRangeFilter] = useState('All');
 
   useEffect(() => {
     const q = search.toLowerCase();
-    setResults(ipcData.filter((i:any) => i.section.toString().includes(q) || i.title.toLowerCase().includes(q)).slice(0, 50));
-  }, [search]);
+    const range = ranges.find(r => r.label === rangeFilter) || ranges[0];
+    setResults(
+      ipcData
+        .filter((i: any) => {
+          const sectionNum = Number(i.section);
+          const inRange = sectionNum >= range.min && sectionNum <= range.max;
+          const matches =
+            i.section.toString().includes(q) ||
+            i.title.toLowerCase().includes(q) ||
+            i.description?.toLowerCase().includes(q);
+          return inRange && (q ? matches : true);
+        })
+        .slice(0, 80)
+    );
+  }, [search, rangeFilter]);
+
+  const analyzeIncident = () => {
+    const text = incidentText.trim().toLowerCase();
+    setIncidentAnalyzed(true);
+    if (!text) {
+      setIncidentMatches([]);
+      setSelected(null);
+      return;
+    }
+    const keywords = text.split(/\W+/).filter((w) => w.length > 2).slice(0, 12);
+    const scored = ipcData
+      .map((i: any) => {
+        const hay = `${i.section} ${i.title} ${i.description || ''}`.toLowerCase();
+        const score = keywords.reduce((s, k) => s + (hay.includes(k) ? 1 : 0), 0);
+        return { ...i, _score: score };
+      })
+      .filter((i: any) => i._score > 0)
+      .sort((a: any, b: any) => b._score - a._score)
+      .slice(0, 8);
+    setIncidentMatches(scored);
+    setSelected(scored[0] || null);
+  };
 
   return (
-    <PageContainer title="IPC Lookup" subtitle="Instant access to Indian Penal Code sections.">
-      <Card className="min-h-[700px] flex flex-col md:flex-row overflow-hidden border-0 shadow-2xl">
-        <div className="md:w-1/3 border-r border-slate-100 p-6 bg-slate-50">
-          <div className="relative mb-6">
-            <Search className="absolute left-4 top-4 text-slate-400 w-5 h-5" />
-            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search Section..." className="w-full p-4 pl-12 bg-white border border-slate-200 rounded-xl shadow-sm outline-none focus:ring-2 focus:ring-slate-900/10 font-medium text-slate-800" />
+    <PageContainer title="IPC Lookup" subtitle="Explore IPC sections visually with filters and spotlight view.">
+      <Card className="overflow-hidden border-0 shadow-2xl">
+        <div className="p-6 bg-slate-900 text-white flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-amber-500 rounded-xl text-slate-900"><Scroll className="w-6 h-6"/></div>
+            <div>
+              <h3 className="text-2xl font-serif font-bold">IPC Section Explorer</h3>
+              <p className="text-slate-300 text-sm">Explore sections or find likely sections from an incident.</p>
+            </div>
           </div>
-          <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
-            {results.map((r:any) => (
-              <button key={r.section} onClick={() => setSelected(r)} className={`w-full text-left p-4 rounded-xl transition-all border ${selected?.section === r.section ? 'bg-slate-900 text-white border-slate-900 shadow-lg' : 'bg-white border-transparent hover:bg-white hover:border-slate-200 hover:shadow-sm'}`}>
-                <div className="font-bold text-sm mb-1 flex justify-between">
-                  <span>Section {r.section}</span>
-                  {selected?.section === r.section && <ChevronRight className="w-4 h-4 text-amber-400"/>}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setMode('explore')}
+              className={`px-4 py-2 rounded-full text-xs font-bold ${mode === 'explore' ? 'bg-white text-slate-900' : 'bg-slate-800 text-slate-200'}`}
+            >
+              Explore Sections
+            </button>
+            <button
+              onClick={() => setMode('incident')}
+              className={`px-4 py-2 rounded-full text-xs font-bold ${mode === 'incident' ? 'bg-white text-slate-900' : 'bg-slate-800 text-slate-200'}`}
+            >
+              Incident Finder
+            </button>
+          </div>
+        </div>
+
+        {mode === 'explore' ? (
+          <>
+            <div className="p-6 border-b border-slate-100 bg-white">
+              <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+                <div className="relative flex-1">
+                  <Search className="absolute left-4 top-4 text-slate-400 w-5 h-5" />
+                  <input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search by section, title, or keyword..."
+                    className="w-full p-4 pl-12 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-slate-900/10 font-medium text-slate-800"
+                  />
                 </div>
-                <div className={`text-xs truncate ${selected?.section === r.section ? 'text-slate-300' : 'text-slate-500'}`}>{r.title}</div>
-              </button>
-            ))}
+                <div className="flex flex-wrap gap-2">
+                  {ranges.map(r => (
+                    <button
+                      key={r.label}
+                      onClick={() => setRangeFilter(r.label)}
+                      className={`px-4 py-2 rounded-full text-xs font-bold transition-all ${rangeFilter === r.label ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                    >
+                      {r.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid lg:grid-cols-3">
+              <div className="lg:col-span-2 p-6 bg-white">
+                <div className="grid md:grid-cols-2 gap-4">
+                  {results.map((r: any) => (
+                    <button
+                      key={r.section}
+                      onClick={() => setSelected(r)}
+                      className={`text-left p-4 rounded-2xl border transition-all hover:shadow-md ${selected?.section === r.section ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 bg-white'}`}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <span className={`text-xs font-bold ${selected?.section === r.section ? 'text-amber-300' : 'text-amber-600'}`}>Section {r.section}</span>
+                        <ChevronRight className={`w-4 h-4 ${selected?.section === r.section ? 'text-amber-300' : 'text-slate-300'}`} />
+                      </div>
+                      <div className={`font-semibold mb-1 ${selected?.section === r.section ? 'text-white' : 'text-slate-900'}`}>{r.title}</div>
+                      <div className={`text-xs line-clamp-2 ${selected?.section === r.section ? 'text-slate-200' : 'text-slate-500'}`}>{r.description}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="lg:col-span-1 p-6 bg-slate-50 border-l border-slate-100">
+                {selected ? (
+                  <div className="animate-fade-in h-full flex flex-col">
+                    <div className="inline-block px-3 py-1 bg-amber-100 text-amber-800 font-bold rounded-full text-xs mb-4 w-fit">Spotlight</div>
+                    <div className="text-sm font-bold text-slate-500 mb-2">Section {selected.section}</div>
+                    <h3 className="text-2xl font-serif font-bold text-slate-900 mb-4 leading-tight">{selected.title}</h3>
+                    <div className="text-slate-600 text-sm leading-relaxed flex-grow">
+                      {selected.description}
+                    </div>
+                    <div className="mt-6 pt-6 border-t border-slate-200 flex flex-col gap-2">
+                      <button className="px-4 py-2 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-100 transition-all flex items-center gap-2"><Download className="w-4 h-4"/> Download</button>
+                      <button className="px-4 py-2 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-100 transition-all flex items-center gap-2"><Bookmark className="w-4 h-4"/> Save</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="h-full flex flex-col items-center justify-center text-slate-400 p-8 bg-white/70 rounded-2xl border border-dashed border-slate-200">
+                    <div className="w-16 h-16 bg-white rounded-full shadow-sm flex items-center justify-center mb-4">
+                      <Search className="w-7 h-7 text-slate-300" />
+                    </div>
+                    <p className="text-sm font-medium text-slate-600 text-center">Select a section to view spotlight details</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="p-6 bg-white">
+            <div className="grid lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2">
+                <label className="text-sm font-bold text-slate-700 mb-2 block">Describe the incident</label>
+                <textarea
+                  value={incidentText}
+                  onChange={(e) => setIncidentText(e.target.value)}
+                  placeholder="Example: Someone stole my phone on the bus and the person threatened me when I asked for help."
+                  className="w-full min-h-[160px] p-4 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-slate-900/10"
+                />
+                <div className="flex gap-3 mt-4">
+                  <button
+                    onClick={analyzeIncident}
+                    className="px-6 py-3 bg-slate-900 text-white rounded-xl font-bold"
+                  >
+                    Find Relevant Sections
+                  </button>
+                  <button
+                    onClick={() => { setIncidentText(''); setIncidentMatches([]); setIncidentAnalyzed(false); setSelected(null); }}
+                    className="px-6 py-3 bg-slate-100 text-slate-700 rounded-xl font-bold"
+                  >
+                    Clear
+                  </button>
+                </div>
+                <div className="mt-6">
+                  {incidentAnalyzed && incidentMatches.length === 0 && (
+                    <div className="text-sm text-slate-500">No strong matches found. Try adding more details.</div>
+                  )}
+                  <div className="grid md:grid-cols-2 gap-4">
+                    {incidentMatches.map((r: any) => (
+                      <button
+                        key={r.section}
+                        onClick={() => setSelected(r)}
+                        className={`text-left p-4 rounded-2xl border transition-all hover:shadow-md ${selected?.section === r.section ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 bg-white'}`}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <span className={`text-xs font-bold ${selected?.section === r.section ? 'text-amber-300' : 'text-amber-600'}`}>Section {r.section}</span>
+                          <div className={`text-[10px] font-bold ${selected?.section === r.section ? 'text-slate-300' : 'text-slate-400'}`}>Match {r._score}</div>
+                        </div>
+                        <div className={`font-semibold mb-1 ${selected?.section === r.section ? 'text-white' : 'text-slate-900'}`}>{r.title}</div>
+                        <div className={`text-xs line-clamp-2 ${selected?.section === r.section ? 'text-slate-200' : 'text-slate-500'}`}>{r.description}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="lg:col-span-1 p-6 bg-slate-50 border border-slate-100 rounded-2xl">
+                {selected ? (
+                  <div className="animate-fade-in h-full flex flex-col">
+                    <div className="inline-block px-3 py-1 bg-amber-100 text-amber-800 font-bold rounded-full text-xs mb-4 w-fit">Suggested Section</div>
+                    <div className="text-sm font-bold text-slate-500 mb-2">Section {selected.section}</div>
+                    <h3 className="text-2xl font-serif font-bold text-slate-900 mb-4 leading-tight">{selected.title}</h3>
+                    <div className="text-slate-600 text-sm leading-relaxed flex-grow">
+                      {selected.description}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-sm text-slate-500">Enter an incident to get suggested IPC sections.</div>
+                )}
+              </div>
+            </div>
           </div>
-        </div>
-        <div className="md:w-2/3 p-12 bg-white">
-          {selected ? (
-            <div className="animate-fade-in h-full flex flex-col">
-              <div className="inline-block px-4 py-1 bg-amber-50 text-amber-800 font-bold rounded-full text-sm mb-6 w-fit border border-amber-100">Section {selected.section}</div>
-              <h3 className="text-4xl font-serif font-bold text-slate-900 mb-8 leading-tight">{selected.title}</h3>
-              <div className="prose prose-lg max-w-none text-slate-600 leading-loose text-lg font-light flex-grow">
-                {selected.description}
-              </div>
-              <div className="mt-12 pt-8 border-t border-slate-100 flex gap-4">
-                <button className="px-6 py-3 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition-all flex items-center gap-2"><Download className="w-4 h-4"/> PDF</button>
-                <button className="px-6 py-3 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition-all flex items-center gap-2"><Bookmark className="w-4 h-4"/> Save</button>
-              </div>
-            </div>
-          ) : (
-            <div className="h-full flex flex-col items-center justify-center text-slate-400 p-12 bg-slate-50/30 rounded-3xl border-2 border-dashed border-slate-200">
-              <div className="w-24 h-24 bg-white rounded-full shadow-sm flex items-center justify-center mb-6">
-                <Search className="w-10 h-10 text-slate-300" />
-              </div>
-              <p className="text-xl font-medium text-slate-600">Select a section to view details</p>
-            </div>
-          )}
-        </div>
+        )}
       </Card>
     </PageContainer>
   );
 };
 
-const PenaltyCalculator = () => (
-  <PageContainer title="Penalty Calculator" subtitle="Check punishments for various offenses.">
-    <Card className="p-12 text-center text-slate-500 bg-slate-50/50 border-2 border-dashed border-slate-200">
-      <Scale className="w-20 h-20 mx-auto mb-6 opacity-20" />
-      <p className="text-xl font-light">Select a section from the IPC Lookup tool to view detailed penalty calculations.</p>
-    </Card>
-  </PageContainer>
-);
+const PenaltyCalculator = () => {
+  const { currentUser } = useAuth();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState('section');
+  const [selectedPenalty, setSelectedPenalty] = useState<any | null>(null);
+  const [bookmarkedPenalties, setBookmarkedPenalties] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    const q = query(collection(db, 'users', currentUser.uid, 'bookmarks'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setBookmarkedPenalties(snapshot.docs.filter(d => d.data().type === 'IPCSection').map(d => d.data().data.section));
+    });
+    return () => unsubscribe();
+  }, [currentUser]);
+
+  const addBookmark = async () => {
+    if (!currentUser || !selectedPenalty) return;
+    try {
+      await addDoc(collection(db, 'users', currentUser.uid, 'bookmarks'), { 
+        type: 'IPCSection', 
+        data: selectedPenalty, 
+        createdAt: serverTimestamp() 
+      });
+      alert('Section bookmarked successfully!');
+    } catch (err) {
+      console.error('Error bookmarking:', err);
+    }
+  };
+
+  const filteredPenalties = penaltyData.filter((p: any) => {
+    const matchesSearch = searchQuery.trim() === '' || 
+      p.section?.toString().toLowerCase().includes(searchQuery.toLowerCase()) || 
+      p.title?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      p.description?.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesSearch;
+  });
+
+  const sortedPenalties = [...filteredPenalties].sort((a, b) => {
+    if (sortBy === 'section') {
+      const aNum = parseInt(a.section?.toString() || '0');
+      const bNum = parseInt(b.section?.toString() || '0');
+      return aNum - bNum;
+    }
+    if (sortBy === 'title') return (a.title || '').localeCompare(b.title || '');
+    return 0;
+  });
+
+  return (
+    <PageContainer title="IPC Database" subtitle="Complete Indian Penal Code sections with detailed descriptions and legal implications.">
+      <Card className="p-8">
+        <div className="flex flex-col md:flex-row gap-4 mb-8">
+          <input 
+            value={searchQuery} 
+            onChange={(e) => setSearchQuery(e.target.value)} 
+            placeholder="Search by section number, title, or description..." 
+            className="flex-1 p-4 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-slate-900/10 transition-all font-medium text-slate-800" 
+          />
+          <select 
+            value={sortBy} 
+            onChange={(e) => setSortBy(e.target.value)} 
+            className="p-4 bg-slate-50 border border-slate-200 rounded-xl outline-none font-medium text-slate-700 min-w-[150px]"
+          >
+            <option value="section">By Section Number</option>
+            <option value="title">By Title</option>
+          </select>
+        </div>
+
+        <div className="grid md:grid-cols-3 gap-8">
+          <div className="md:col-span-1 border-r border-slate-100 pr-6">
+            <h4 className="font-bold text-slate-900 mb-6 flex items-center gap-2 text-lg">
+              <Scroll className="w-5 h-5 text-amber-500"/> IPC Sections ({sortedPenalties.length})
+            </h4>
+            <div className="space-y-3 max-h-[650px] overflow-y-auto pr-2 custom-scrollbar">
+              {sortedPenalties.map((p: any, idx: number) => (
+                <button 
+                  key={idx} 
+                  onClick={() => setSelectedPenalty({...p, id: idx})} 
+                  className={`w-full text-left p-4 rounded-xl border transition-all hover:scale-[1.02] duration-200 ${
+                    selectedPenalty?.id === idx 
+                      ? 'bg-slate-900 text-white border-slate-900 shadow-lg shadow-slate-900/20' 
+                      : 'bg-slate-50 border-slate-100 hover:bg-white hover:shadow-md'
+                  }`}
+                >
+                  <div className="font-bold text-sm mb-1 line-clamp-2">Section {p.section}: {p.title}</div>
+                  <div className={`text-xs ${selectedPenalty?.id === idx ? 'text-slate-300' : 'text-slate-500'}`}>
+                    {p.description?.substring(0, 40)}...
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="md:col-span-2">
+            {selectedPenalty ? (
+              <div className="animate-fade-in space-y-8">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="text-3xl font-serif font-bold text-slate-900">Section {selectedPenalty.section}</h3>
+                    <p className="text-xl text-amber-600 font-semibold mt-2">{selectedPenalty.title}</p>
+                  </div>
+                  <button 
+                    onClick={addBookmark} 
+                    className={`px-5 py-2.5 rounded-full text-sm font-bold flex items-center gap-2 transition-all shadow-sm ${
+                      bookmarkedPenalties.includes(selectedPenalty.section) 
+                        ? 'bg-amber-100 text-amber-700' 
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    <Bookmark className="w-4 h-4" /> {bookmarkedPenalties.includes(selectedPenalty.section) ? 'Saved' : 'Save'}
+                  </button>
+                </div>
+
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50/50 p-8 rounded-2xl border border-blue-100 shadow-inner">
+                  <h4 className="font-bold text-slate-900 mb-3 flex items-center gap-2"><FileText className="w-4 h-4 text-amber-600"/> Description</h4>
+                  <p className="text-slate-700 leading-relaxed text-base font-light">{selectedPenalty.description}</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 hover:shadow-md transition-shadow">
+                    <h4 className="font-bold text-slate-900 mb-2 text-sm uppercase tracking-wider flex items-center gap-2"><Scale className="w-4 h-4 text-amber-600"/> Section Details</h4>
+                    <p className="text-slate-600 text-sm leading-relaxed font-semibold">
+                      Section {selectedPenalty.section}
+                    </p>
+                    <p className="text-slate-500 text-xs mt-2">Refer to Indian Penal Code for detailed legal interpretation and amendments</p>
+                  </div>
+                  <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 hover:shadow-md transition-shadow">
+                    <h4 className="font-bold text-slate-900 mb-2 text-sm uppercase tracking-wider flex items-center gap-2"><Info className="w-4 h-4 text-amber-600"/> Legal Reference</h4>
+                    <p className="text-slate-600 text-sm leading-relaxed font-semibold">
+                      Indian Penal Code, 1860
+                    </p>
+                    <p className="text-slate-500 text-xs mt-2">Consult a legal professional for case-specific advice</p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="h-full flex flex-col items-center justify-center text-slate-400 p-10 border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
+                <Scroll className="w-16 h-16 mb-4 opacity-20" />
+                <p className="text-lg font-medium">Select an IPC section from the list to view details</p>
+                <p className="text-sm mt-2">Total {sortedPenalties.length} sections available in the Indian Penal Code</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </Card>
+      <LegalDisclaimer />
+    </PageContainer>
+  );
+};
 
 const HistoryPage = () => {
   const { currentUser } = useAuth();
@@ -1739,16 +3214,75 @@ const HistoryPage = () => {
   );
 };
 
-const Bookmarks = () => (
-  <PageContainer title="Saved Items" subtitle="Your bookmarked cases and sections.">
-    <Card className="p-16 text-center">
-      <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
-        <Bookmark className="w-8 h-8 text-slate-300"/>
-      </div>
-      <p className="text-slate-500 text-lg">No bookmarks yet.</p>
-    </Card>
-  </PageContainer>
-);
+const Bookmarks = ({ onNavigate }: { onNavigate: (page: string) => void }) => {
+  const { currentUser } = useAuth();
+  const [items, setItems] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    const q = query(collection(db, 'users', currentUser.uid, 'bookmarks'), orderBy('createdAt', 'desc'));
+    return onSnapshot(q, (snap) => {
+      setItems(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    });
+  }, [currentUser]);
+
+  const removeBookmark = async (id: string) => {
+    if (!currentUser) return;
+    try {
+      await deleteDoc(doc(db, 'users', currentUser.uid, 'bookmarks', id));
+    } catch (err) {
+      console.error('Failed to remove bookmark', err);
+    }
+  };
+
+  const renderTitle = (item: any) => {
+    if (item.type === 'Case') return item.data?.title || 'Case';
+    if (item.type === 'IPCSection') return `Section ${item.data?.section}: ${item.data?.title || ''}`;
+    return item.type || 'Bookmark';
+  };
+
+  const renderMeta = (item: any) => {
+    if (item.type === 'Case') return item.data?.court || item.data?.category || '';
+    if (item.type === 'IPCSection') return item.data?.description?.slice(0, 120) || '';
+    return '';
+  };
+
+  const empty = !items.length;
+
+  return (
+    <PageContainer title="Saved Items" subtitle="Your bookmarked cases and sections.">
+      {empty ? (
+        <Card className="p-16 text-center">
+          <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Bookmark className="w-8 h-8 text-slate-300"/>
+          </div>
+          <p className="text-slate-500 text-lg">No bookmarks yet.</p>
+        </Card>
+      ) : (
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {items.map((item) => (
+            <Card key={item.id} className="p-5 flex flex-col gap-3 border-l-4 border-l-amber-500">
+              <div className="flex items-center justify-between">
+                <span className="px-3 py-1 rounded-full bg-amber-50 text-amber-700 text-xs font-bold uppercase tracking-wide">{item.type}</span>
+                <button onClick={() => removeBookmark(item.id)} className="text-slate-400 hover:text-red-500 transition-colors"><X className="w-4 h-4"/></button>
+              </div>
+              <h3 className="font-bold text-slate-900 text-lg leading-tight">{renderTitle(item)}</h3>
+              <p className="text-slate-600 text-sm leading-relaxed line-clamp-3">{renderMeta(item)}</p>
+              <div className="flex gap-2 mt-auto">
+                {item.type === 'Case' && (
+                  <button onClick={() => onNavigate('cases')} className="px-3 py-2 bg-slate-900 text-white text-xs rounded-lg font-bold hover:bg-slate-800">Open Cases</button>
+                )}
+                {item.type === 'IPCSection' && (
+                  <button onClick={() => onNavigate('penalty')} className="px-3 py-2 bg-slate-900 text-white text-xs rounded-lg font-bold hover:bg-slate-800">Open IPC</button>
+                )}
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+    </PageContainer>
+  );
+};
 
 const ConstitutionalRights = () => (
   <PageContainer title="Constitutional Rights" subtitle="Know your fundamental rights.">
@@ -2123,6 +3657,303 @@ const CasePredictor = () => {
   );
 };
 
+// --- 3.15 CASE OUTCOME PREDICTOR (NEW) ---
+
+const CaseOutcomePredictor = () => {
+  const { currentUser } = useAuth();
+  const [formData, setFormData] = useState({
+    caseType: '',
+    description: '',
+    evidence: '',
+    plaintiff: '',
+    defendant: '',
+    state: '',
+    facts: ''
+  });
+  const [result, setResult] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+
+  const caseTypes = [
+    'Criminal - Theft', 'Criminal - Assault', 'Criminal - Murder', 'Criminal - Fraud',
+    'Civil - Property Dispute', 'Civil - Contract Breach', 'Civil - Family/Matrimonial',
+    'Corporate - Partnership Dispute', 'Corporate - Employment', 
+    'Consumer Rights', 'Cyber Crime', 'Taxation', 'Other'
+  ];
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.caseType || !formData.description) {
+      alert('Please fill in Case Type and Description');
+      return;
+    }
+
+    setIsLoading(true);
+    setResult(null);
+    try {
+      const response = await fetch('http://localhost:8001/api/predict-outcome', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to predict outcome');
+      }
+      
+      const data = await response.json();
+      setResult(data);
+
+      if (currentUser) {
+        await addDoc(collection(db, 'history', currentUser.uid, 'queries'), {
+          type: 'Case Outcome Prediction',
+          query: `${formData.caseType}: ${formData.description}`,
+          response: data.analysis,
+          prediction: data.prediction,
+          confidence: data.confidence,
+          createdAt: serverTimestamp()
+        });
+      }
+    } catch (err: any) {
+      alert('Error: ' + err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDownload = () => {
+    if (!result) return;
+    const doc = new jsPDF('p', 'pt', 'a4');
+    const margin = 50;
+    const pageWidth = doc.internal.pageSize.width;
+    const contentWidth = pageWidth - (margin * 2);
+
+    doc.setFont('times', 'bold');
+    doc.setFontSize(20);
+    doc.text('Case Outcome Prediction Report', pageWidth / 2, 60, { align: 'center' });
+    
+    doc.setFont('times', 'normal');
+    doc.setFontSize(10);
+    doc.text(`Generated: ${new Date().toLocaleDateString()}`, pageWidth / 2, 80, { align: 'center' });
+
+    let yPos = 120;
+    doc.setFont('times', 'bold');
+    doc.setFontSize(14);
+    doc.text(`Predicted Outcome: ${result.prediction}`, margin, yPos);
+    
+    yPos += 25;
+    doc.setFontSize(12);
+    doc.text(`Confidence Level: ${result.confidence}%`, margin, yPos);
+    
+    yPos += 40;
+    doc.setFont('times', 'normal');
+    doc.setFontSize(11);
+    const lines = doc.splitTextToSize(result.analysis || '', contentWidth);
+    lines.forEach((line: string) => {
+      if (yPos > doc.internal.pageSize.height - 80) {
+        doc.addPage();
+        yPos = 50;
+      }
+      doc.text(line, margin, yPos);
+      yPos += 15;
+    });
+
+    doc.save('case-outcome-prediction.pdf');
+  };
+
+  const getConfidenceColor = (confidence: number) => {
+    if (confidence >= 75) return 'text-green-600 bg-green-50';
+    if (confidence >= 50) return 'text-amber-600 bg-amber-50';
+    return 'text-red-600 bg-red-50';
+  };
+
+  return (
+    <PageContainer title="Case Outcome Predictor" subtitle="AI-powered prediction combining historical case data and legal analysis">
+      <div className="grid lg:grid-cols-2 gap-8">
+        <Card className="p-8">
+          <h3 className="text-2xl font-bold text-slate-900 mb-6 font-serif flex items-center gap-2">
+            <Scale className="w-6 h-6 text-amber-500" />
+            Case Details
+          </h3>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-2">Case Type *</label>
+              <select
+                value={formData.caseType}
+                onChange={(e) => setFormData({ ...formData, caseType: e.target.value })}
+                className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-slate-900/10 font-medium text-slate-800"
+                required
+              >
+                <option value="">Select case type...</option>
+                {caseTypes.map(type => <option key={type} value={type}>{type}</option>)}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-2">Case Description *</label>
+              <textarea
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                placeholder="Describe the case in detail: what happened, when, where, and who was involved..."
+                className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-slate-900/10 font-medium text-slate-800 placeholder-slate-500 h-32 resize-none"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-2">Key Facts</label>
+              <textarea
+                value={formData.facts}
+                onChange={(e) => setFormData({ ...formData, facts: e.target.value })}
+                placeholder="List key facts, dates, locations, and circumstances..."
+                className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-slate-900/10 font-medium text-slate-800 placeholder-slate-500 h-24 resize-none"
+              />
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">Plaintiff/Complainant</label>
+                <input
+                  type="text"
+                  value={formData.plaintiff}
+                  onChange={(e) => setFormData({ ...formData, plaintiff: e.target.value })}
+                  placeholder="Name of plaintiff"
+                  className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-slate-900/10 font-medium text-slate-800"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">Defendant/Accused</label>
+                <input
+                  type="text"
+                  value={formData.defendant}
+                  onChange={(e) => setFormData({ ...formData, defendant: e.target.value })}
+                  placeholder="Name of defendant"
+                  className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-slate-900/10 font-medium text-slate-800"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-2">State/Jurisdiction</label>
+              <input
+                type="text"
+                value={formData.state}
+                onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                placeholder="e.g., Delhi, Maharashtra, Karnataka"
+                className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-slate-900/10 font-medium text-slate-800"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-2">Evidence Available</label>
+              <textarea
+                value={formData.evidence}
+                onChange={(e) => setFormData({ ...formData, evidence: e.target.value })}
+                placeholder="List available evidence: documents, witnesses, forensic reports, CCTV footage, etc."
+                className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-slate-900/10 font-medium text-slate-800 placeholder-slate-500 h-24 resize-none"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full bg-slate-900 text-white font-bold py-4 rounded-xl shadow-lg shadow-slate-900/30 hover:bg-slate-800 hover:scale-[1.02] transition-all flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="animate-spin w-5 h-5"/>
+                  Analyzing Case...
+                </>
+              ) : (
+                <>
+                  <Zap className="w-5 h-5 text-amber-400"/>
+                  Predict Outcome
+                </>
+              )}
+            </button>
+          </form>
+        </Card>
+
+        {result ? (
+          <Card className="p-8 bg-gradient-to-br from-slate-50 to-white border-t-4 border-amber-500">
+            <div className="flex justify-between items-start mb-6 border-b border-slate-200 pb-4">
+              <div>
+                <h3 className="font-bold text-slate-900 text-2xl font-serif mb-2">Prediction Result</h3>
+                <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full font-bold ${getConfidenceColor(result.confidence)}`}>
+                  <CheckCircle2 className="w-5 h-5" />
+                  {result.confidence}% Confidence
+                </div>
+              </div>
+              <div className="flex gap-2">
+                {isSpeaking ? (
+                  <button onClick={() => { window.speechSynthesis.cancel(); setIsSpeaking(false); }} className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200">
+                    <StopCircle className="w-5 h-5"/>
+                  </button>
+                ) : (
+                  <button onClick={() => { const utterance = new SpeechSynthesisUtterance(result.analysis); utterance.onend = () => setIsSpeaking(false); window.speechSynthesis.speak(utterance); setIsSpeaking(true); }} className="p-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300">
+                    <Volume2 className="w-5 h-5"/>
+                  </button>
+                )}
+                <button onClick={handleDownload} className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg font-bold hover:bg-slate-800">
+                  <Download className="w-4 h-4"/> Download
+                </button>
+              </div>
+            </div>
+
+            <div className="mb-6 p-6 bg-white rounded-2xl border-l-4 border-amber-500 shadow-sm">
+              <div className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-2">Predicted Outcome</div>
+              <div className="text-2xl font-bold text-slate-900 font-serif">{result.prediction}</div>
+            </div>
+
+            {result.similarCasesCount > 0 && (
+              <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                <div className="flex items-center gap-2 text-amber-800 font-bold mb-2">
+                  <Bookmark className="w-4 h-4" />
+                  {result.similarCasesCount} Similar Historical Cases Found
+                </div>
+                <div className="text-sm text-amber-700">Analysis based on database patterns and precedents</div>
+              </div>
+            )}
+
+            <div className="prose prose-slate max-w-none">
+              <div className="p-6 bg-white rounded-xl shadow-inner border border-slate-100 max-h-[600px] overflow-y-auto whitespace-pre-wrap font-serif text-slate-700 leading-relaxed">
+                {result.analysis}
+              </div>
+            </div>
+
+            {result.similarCases && result.similarCases.length > 0 && (
+              <div className="mt-6">
+                <h4 className="font-bold text-slate-900 mb-3 flex items-center gap-2">
+                  <Landmark className="w-5 h-5 text-amber-500" />
+                  Similar Past Cases
+                </h4>
+                <div className="space-y-2">
+                  {result.similarCases.map((c: any, idx: number) => (
+                    <div key={idx} className="p-3 bg-slate-50 rounded-lg border border-slate-200 text-sm">
+                      <div className="font-semibold text-slate-900">{c.title}</div>
+                      <div className="text-slate-600">Judgement: {c.judgement || 'N/A'} • {c.punishment || 'N/A'}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <LegalDisclaimer />
+          </Card>
+        ) : (
+          <div className="flex flex-col items-center justify-center p-12 border-2 border-dashed border-slate-300 rounded-3xl text-slate-400 bg-slate-50/50">
+            <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-sm mb-6">
+              <Scale className="w-12 h-12 text-slate-300" />
+            </div>
+            <p className="text-lg font-medium text-slate-500">Prediction will appear here</p>
+            <p className="text-sm">Fill in the case details and click predict to get started</p>
+          </div>
+        )}
+      </div>
+    </PageContainer>
+  );
+};
+
 // --- 4. APP SHELL & NAVIGATION ---
 
 const App = () => {
@@ -2136,6 +3967,7 @@ const App = () => {
     if (!currentUser) return <AuthPage />;
     switch (currentPage) {
       case 'predict': return <CasePredictor />; // Removed if using smart chat as primary, keeping for direct access if needed
+      case 'outcome': return <CaseOutcomePredictor />;
       case 'chat': return <SmartLegalChat />;
       case 'learn': return <LegalLiteracy />;
       case 'docs': return <DocumentGenerator />;
@@ -2180,13 +4012,15 @@ const App = () => {
           <nav className="container mx-auto px-6 h-20 flex justify-between items-center">
             
             <div className="flex items-center gap-3 cursor-pointer group" onClick={() => setCurrentPage('home')}>
-              <div className="bg-slate-900 p-2.5 rounded-xl text-white shadow-lg shadow-slate-900/20 group-hover:scale-105 transition-transform"><Gavel className="w-6 h-6" /></div>
+              <div className="bg-white p-2 rounded-xl shadow-lg shadow-slate-900/10 border border-slate-200 group-hover:scale-105 transition-transform">
+                <img src={LOGO_URL} alt="Nyay Saathi logo" className="w-10 h-10 object-contain" />
+              </div>
               <h1 className="text-2xl font-serif font-bold text-slate-900 tracking-tight group-hover:text-slate-700 transition-colors">Nyay Saathi</h1>
             </div>
             
             <div className="hidden lg:flex items-center gap-1">
               <button onClick={() => setCurrentPage('home')} className={`px-5 py-2 rounded-full font-bold text-sm uppercase tracking-wide transition-all ${currentPage === 'home' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'}`}>Home</button>
-              <NavGroup title="AI Tools" items={[{ label: "Smart Chat", page: "chat", icon: MessageCircle }, { label: "Doc Generator", page: "docs", icon: FileText }, { label: "Doc Analyzer", page: "analyze", icon: FileSearch }, { label: "Voice Assistant", page: "voice", icon: Mic }]} />
+              <NavGroup title="AI Tools" items={[{ label: "Smart Chat", page: "chat", icon: MessageCircle }, { label: "Outcome Predictor", page: "outcome", icon: BrainCircuit }, { label: "Doc Generator", page: "docs", icon: FileText }, { label: "Doc Analyzer", page: "analyze", icon: FileSearch }, { label: "Voice Assistant", page: "voice", icon: Mic }]} />
               <NavGroup title="Resources" items={[{ label: "IPC Lookup", page: "ipc", icon: Search }, { label: "Case Laws", page: "cases", icon: Landmark }, { label: "Penalties", page: "penalty", icon: Scale }, { label: "Find Advocate", page: "find", icon: Users }, { label: "Recent Verdicts", page: "verdicts", icon: Scroll }, { label: "Community", page: "community", icon: Users }]} />
               <div className="h-8 w-px bg-slate-200 mx-4"></div>
               <button onClick={() => setCurrentPage('history')} className="p-2.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-full transition-all" title="History"><History className="w-5 h-5" /></button>
@@ -2203,7 +4037,9 @@ const App = () => {
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-amber-500 via-white to-amber-500 opacity-30"></div>
           <div className="container mx-auto px-6 text-center relative z-10">
             <div className="flex justify-center items-center gap-4 mb-8">
-              <div className="bg-white/10 p-4 rounded-2xl backdrop-blur-sm"><Gavel className="w-8 h-8 text-amber-400" /></div>
+              <div className="bg-white/10 p-3 rounded-2xl backdrop-blur-sm border border-white/20">
+                <img src={LOGO_URL} alt="Nyay Saathi logo" className="w-12 h-12 object-contain" />
+              </div>
               <span className="text-4xl font-serif font-bold tracking-tight text-white">Nyay Saathi</span>
             </div>
             <p className="text-slate-300 text-lg max-w-2xl mx-auto mb-16 font-light leading-relaxed">

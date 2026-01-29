@@ -1,0 +1,97 @@
+// ===== FIRESTORE SECURITY RULES FOR NYAY SAATHI =====
+// Copy and paste these rules into your Firestore Console under Rules tab
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===== USER COLLECTION =====
+    match /users/{userId} {
+      allow read, write: if request.auth.uid == userId;
+      
+      // Bookmarks subcollection
+      match /bookmarks/{bookmark} {
+        allow read, write: if request.auth.uid == userId;
+      }
+      
+      // Progress subcollection (for Nyay Vidya)
+      match /progress/{progress} {
+        allow read, write: if request.auth.uid == userId;
+      }
+    }
+
+    // ===== HISTORY COLLECTION =====
+    match /history/{userId} {
+      allow read, write: if request.auth.uid == userId;
+      
+      match /queries/{query} {
+        allow read, write: if request.auth.uid == userId;
+      }
+    }
+
+    // ===== COMMUNITY FORUM POSTS =====
+    match /forum_posts/{postId} {
+      // Anyone authenticated can read posts
+      allow read: if request.auth != null;
+      
+      // Only authenticated users can create posts
+      allow create: if request.auth != null && 
+                       request.resource.data.author is string &&
+                       request.resource.data.title is string &&
+                       request.resource.data.title.size() > 0 &&
+                       request.resource.data.content is string &&
+                       request.resource.data.content.size() > 0 &&
+                       request.resource.data.category is string &&
+                       request.resource.data.authorId == request.auth.uid &&
+                       request.resource.data.createdAt is timestamp &&
+                       request.resource.data.upvotes is number &&
+                       request.resource.data.upvotedBy is list &&
+                       request.resource.data.commentCount is number;
+      
+      // Only post author can update their own post (except upvotes/commentCount)
+      allow update: if request.auth != null && (
+                        request.auth.uid == resource.data.authorId ||
+                        (request.resource.data.upvotes is number &&
+                         request.resource.data.upvotedBy is list &&
+                         request.resource.data.commentCount is number)
+                       );
+      
+      // Only post author can delete their own post
+      allow delete: if request.auth != null && request.auth.uid == resource.data.authorId;
+      
+      // Comments subcollection
+      match /comments/{commentId} {
+        // Anyone authenticated can read comments
+        allow read: if request.auth != null;
+        
+        // Authenticated users can create comments
+        allow create: if request.auth != null &&
+                         request.resource.data.author is string &&
+                         request.resource.data.text is string &&
+                         request.resource.data.authorId == request.auth.uid;
+        
+        // Only comment author can delete
+        allow delete: if request.auth != null && request.auth.uid == resource.data.authorId;
+      }
+    }
+
+    // ===== NYAY VIDYA LEADERBOARD =====
+    match /leaderboards/nyayVidya/scores/{userId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // ===== DEFAULT DENY =====
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
+// ===== HOW TO APPLY =====
+// 1. Go to https://console.firebase.google.com
+// 2. Select your Nyay Saathi project
+// 3. Navigate to Firestore Database > Rules tab
+// 4. Clear existing rules and paste the above rules
+// 5. Click Publish
+// 6. Test creating a post again in the app
