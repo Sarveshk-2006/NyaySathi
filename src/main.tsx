@@ -6,6 +6,7 @@ import { BrowserRouter } from 'react-router-dom'
 
 // Use the correct relative path './'
 import { AuthProvider } from './contexts/AuthContext'
+import { CasesProvider } from './contexts/CasesContext'
 import { ErrorBoundary } from './ErrorBoundary'
 
 const root = document.getElementById('root')
@@ -17,10 +18,12 @@ ReactDOM.createRoot(root).render(
   <React.StrictMode>
     <ErrorBoundary>
       <BrowserRouter>
-        {/* Wrap your App in the AuthProvider */}
-        <AuthProvider>
-          <App />
-        </AuthProvider>
+        {/* Wrap your App in the AuthProvider and CasesProvider for real-time case sync */}
+        <CasesProvider>
+          <AuthProvider>
+            <App />
+          </AuthProvider>
+        </CasesProvider>
       </BrowserRouter>
     </ErrorBoundary>
   </React.StrictMode>,

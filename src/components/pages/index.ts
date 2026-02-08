@@ -1,0 +1,20 @@
+// Page Component Exports
+export { default as HomePage } from './HomePage';
+export { default as AuthPage } from './AuthPage';
+export { default as LegalLiteracy } from './LegalLiteracy';
+export { default as SmartLegalChat } from './SmartLegalChat';
+export { default as CommunityForum } from './CommunityForum';
+export { default as RecentVerdicts } from './RecentVerdicts';
+export { default as CaseLawDatabase } from './CaseLawDatabase';
+export { default as DocumentGenerator } from './DocumentGenerator';
+export { default as IPCLookup } from './IPCLookup';
+export { default as PenaltyCalculator } from './PenaltyCalculator';
+export { default as HistoryPage } from './HistoryPage';
+export { default as Bookmarks } from './Bookmarks';
+export { default as ConstitutionalRights } from './ConstitutionalRights';
+export { default as DocumentAnalyzer } from './DocumentAnalyzer';
+export { default as CasePredictor } from './CasePredictor';
+export { default as CaseOutcomePredictor } from './CaseOutcomePredictor';
+export { default as MultiLanguageVoice } from './MultiLanguageVoice';
+export { default as AdvocateFinder } from './AdvocateFinder';
+export { default as AdvocateProfile } from './AdvocateProfile';

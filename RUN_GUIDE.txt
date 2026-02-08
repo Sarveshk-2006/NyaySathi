@@ -1,0 +1,229 @@
+╔════════════════════════════════════════════════════════════════════╗
+║                 🚀 NYAY SAATHI - HOW TO RUN                        ║
+║                   Production Ready Application                      ║
+╚════════════════════════════════════════════════════════════════════╝
+
+📋 WHAT YOU NEED
+├─ Python 3.9+ (for backend)
+├─ Node.js 16+ (for frontend) 
+├─ Gemini API Key (FREE from https://makersuite.google.com)
+└─ 2 Terminal windows
+
+═══════════════════════════════════════════════════════════════════════
+
+⚡ STEP-BY-STEP QUICK START
+
+┌─────────────────────────────────────────────────────────────────────┐
+│ STEP 1: Get Gemini API Key (2 minutes)                              │
+├─────────────────────────────────────────────────────────────────────┤
+│ 1. Go to: https://makersuite.google.com/app/apikey                  │
+│ 2. Click "Create API Key"                                           │
+│ 3. Copy the key (you'll need it in Step 4)                          │
+└─────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│ STEP 2: Open TERMINAL 1 - Backend Setup (3 minutes)                │
+├─────────────────────────────────────────────────────────────────────┤
+│ 
+│ cd d:\Nyay-Sathi\citizen-legal-buddy-main
+│ cd backend
+│ python -m venv .venv
+│ .venv\Scripts\activate
+│ pip install -r requirements.txt
+│
+└─────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│ STEP 3: Create .env file in backend folder                          │
+├─────────────────────────────────────────────────────────────────────┤
+│
+│ Create file: backend\.env
+│ Add this line:
+│ GEMINI_API_KEY=paste_your_key_here_from_step_1
+│
+│ Example:
+│ GEMINI_API_KEY=AIzaSyDfqz5j3k8n9m0p1q2r3s4t5u6v7w8x9y0z
+│
+└─────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│ STEP 4: Start Backend (TERMINAL 1 continued)                       │
+├─────────────────────────────────────────────────────────────────────┤
+│
+│ python main.py
+│
+│ ✅ Expected output:
+│ INFO:     Uvicorn running on http://0.0.0.0:8001
+│ INFO:     Application startup complete
+│
+│ (Leave this terminal running!)
+│
+└─────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│ STEP 5: Open TERMINAL 2 - Frontend Setup (2 minutes)               │
+├─────────────────────────────────────────────────────────────────────┤
+│
+│ cd d:\Nyay-Sathi\citizen-legal-buddy-main
+│ npm install
+│
+│ (This downloads ~500MB, takes 2-3 minutes)
+│
+└─────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│ STEP 6: Start Frontend (TERMINAL 2 continued)                      │
+├─────────────────────────────────────────────────────────────────────┤
+│
+│ npm run dev
+│
+│ ✅ Expected output:
+│ VITE v5.x.x  ready in XXX ms
+│ ➜  Local:   http://localhost:5173/
+│ ➜  press h to show help
+│
+│ (Leave this terminal running!)
+│
+└─────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│ STEP 7: Open in Browser (30 seconds)                               │
+├─────────────────────────────────────────────────────────────────────┤
+│
+│ Go to: http://localhost:5173
+│
+│ You should see:
+│ ✓ Nyay Saathi login page
+│ ✓ "Sign In" and "Create Account" buttons
+│ ✓ Google & GitHub OAuth options
+│
+└─────────────────────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════════
+
+✅ VERIFICATION CHECKLIST
+
+✓ Frontend loads at http://localhost:5173
+✓ Backend running at http://localhost:8001
+✓ Login page appears
+✓ Can enter email/password
+✓ Can click "Create Account"
+✓ No red errors in browser console
+✓ Terminal 1: Backend running
+✓ Terminal 2: Frontend running
+
+═══════════════════════════════════════════════════════════════════════
+
+🎯 WHAT TO TRY AFTER LOGIN
+
+1. 💬 Smart Chat
+   - Type a legal question: "What is Section 420 IPC?"
+   - AI will respond with answer and references
+
+2. 🎙️ Voice Assistant
+   - Click "Voice Assistant"
+   - Say a legal query in English/Hindi/Marathi
+   - See AI analysis
+
+3. 📄 Document Generator
+   - Create legal documents (rental agreement, affidavit, will)
+   - Download as PDF
+
+4. ⚖️ IPC Lookup
+   - Search penal code sections
+   - Read descriptions and penalties
+
+5. 🧑‍⚖️ Find Advocate
+   - Search for lawyers by specialty/location
+   - View advocate profiles (demo data)
+
+6. 🎓 Nyay Vidya
+   - Play interactive legal learning games
+   - Earn XP and badges
+
+═══════════════════════════════════════════════════════════════════════
+
+🆘 COMMON ISSUES & FIXES
+
+❌ "Address already in use :8001"
+✅ Fix: netstat -ano | findstr :8001
+       taskkill /PID <PID_NUMBER> /F
+
+❌ "Python not found"
+✅ Fix: Install from https://python.org
+       Restart terminal after install
+
+❌ "npm not found"
+✅ Fix: Install Node.js from https://nodejs.org
+       Restart terminal after install
+
+❌ "ModuleNotFoundError: No module named 'fastapi'"
+✅ Fix: Make sure virtual environment is activated
+       .venv\Scripts\activate
+       pip install -r requirements.txt
+
+❌ "GEMINI_API_KEY not configured"
+✅ Fix: Create backend/.env with your API key
+       GEMINI_API_KEY=your_actual_key_here
+
+═══════════════════════════════════════════════════════════════════════
+
+📚 DOCUMENTATION FILES
+
+HOW_TO_RUN.md               - Detailed setup guide
+QUICK_START.md              - This file
+QUICK_REFERENCE.md          - Feature overview
+ARCHITECTURE.md             - System design
+IMPLEMENTATION_GUIDE.md     - Development guide
+REFACTORING_FINAL_REPORT.md - Code refactoring details
+
+═══════════════════════════════════════════════════════════════════════
+
+🎯 READY TO ENHANCE?
+
+After running, we can work on:
+
+🆕 Add Features
+   - New AI capabilities
+   - More document types
+   - Mobile optimizations
+
+🎨 Improve UI/UX
+   - Better styling
+   - Dark mode
+   - Responsive design
+
+🌐 Internationalization
+   - More languages
+   - Regional compliance
+
+🔐 Security
+   - Better authentication
+   - Data encryption
+   - Rate limiting
+
+📊 Analytics
+   - User tracking
+   - Performance monitoring
+   - Usage statistics
+
+What would you like to enhance? Let me know! 💡
+
+═══════════════════════════════════════════════════════════════════════
+
+⏱️ TOTAL TIME: ~10 minutes
+
+✓ Gemini API key: 2 min
+✓ Backend setup: 3 min
+✓ Frontend setup: 2 min
+✓ App load time: 1-2 min
+✓ First test: 30 sec
+
+═══════════════════════════════════════════════════════════════════════
+
+Questions? Check the full documentation in:
+📁 d:\Nyay-Sathi\citizen-legal-buddy-main\
+
+Happy coding! 🚀
+
+═══════════════════════════════════════════════════════════════════════
