@@ -2,13 +2,15 @@ import React, { useState, useEffect } from 'react';
 import {
   CheckCircle2, Clock, AlertCircle, FileText, Gavel, XCircle,
   Calendar, Users, FileCheck, ArrowRight, Filter, Search,
-  Download, Eye, Edit, Plus, Trash2
+  Download, Eye, Edit, Plus, Trash2, Save, MessageSquare, Bell, Activity
 } from 'lucide-react';
 import { Case, CaseStatus, CasePriority, CaseCategory } from '../../../types/court';
 import { useCourtAuth } from '../../../contexts/CourtAuthContext';
 import { PERMISSIONS } from '../../../types/court';
-import { subscribeToRealTimeCases, updateCaseStatus } from '../../../services/casesService';
+import { subscribeToRealTimeCases, updateCaseStatus, updateCaseField } from '../../../services/casesService';
 import { initializeFirestoreWithMockCases } from '../../../data/mockCases';
+import { doc, updateDoc, arrayUnion, serverTimestamp } from 'firebase/firestore';
+import { db } from '../../../firebase';
 
 const CaseStatusTracking = () => {
   const { hasPermission, courtUser } = useCourtAuth();
@@ -18,11 +20,17 @@ const CaseStatusTracking = () => {
   const [filterPriority, setFilterPriority] = useState<CasePriority | 'all'>('all');
   const [selectedCase, setSelectedCase] = useState<Case | null>(null);
   const [showStatusModal, setShowStatusModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [unsubscribe, setUnsubscribe] = useState<(() => void) | null>(null);
   const [seeding, setSeeding] = useState(false);
   const [seedError, setSeedError] = useState<string | null>(null);
   const [casesError, setCasesError] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({
+    status: '',
+    nextHearingDate: '',
+    judgeNotes: '',
+  });
 
   // Debug: Log court user on mount
   useEffect(() => {
@@ -127,11 +135,96 @@ const CaseStatusTracking = () => {
     try {
       // Update case status in Firestore - this will automatically trigger real-time updates
       await updateCaseStatus(caseId, newStatus, courtUser?.uid || '', courtUser?.name || '');
+      
+      // Add activity log
+      await addCaseActivity(caseId, {
+        action: 'Status Updated',
+        description: `Case status changed to ${newStatus}`,
+        performedBy: courtUser?.name || 'Judge',
+        performedById: courtUser?.uid || '',
+      });
+      
       setShowStatusModal(false);
       setSelectedCase(null);
     } catch (error) {
       console.error('Error updating case:', error);
       alert('Failed to update case status. Please try again.');
+    }
+  };
+  
+  const handleUpdateCase = async () => {
+    if (!selectedCase || !hasPermission(PERMISSIONS.CASE_EDIT)) {
+      return;
+    }
+
+    try {
+      const caseRef = doc(db, 'cases', selectedCase.id);
+      const updates: any = {
+        lastModifiedBy: courtUser?.uid,
+        lastModifiedByName: courtUser?.name,
+        updatedAt: serverTimestamp(),
+      };
+
+      // Update status if changed
+      if (editForm.status && editForm.status !== selectedCase.status) {
+        updates.status = editForm.status;
+        await addCaseActivity(selectedCase.id, {
+          action: 'Status Updated',
+          description: `Status changed to ${editForm.status}`,
+          performedBy: courtUser?.name || 'Judge',
+          performedById: courtUser?.uid || '',
+        });
+      }
+
+      // Update next hearing date if changed
+      if (editForm.nextHearingDate) {
+        updates.nextHearingDate = new Date(editForm.nextHearingDate);
+        await addCaseActivity(selectedCase.id, {
+          action: 'Hearing Scheduled',
+          description: `Next hearing set for ${new Date(editForm.nextHearingDate).toLocaleDateString()}`,
+          performedBy: courtUser?.name || 'Judge',
+          performedById: courtUser?.uid || '',
+        });
+      }
+
+      // Add judge notes if provided
+      if (editForm.judgeNotes.trim()) {
+        await addCaseActivity(selectedCase.id, {
+          action: 'Note Added',
+          description: editForm.judgeNotes,
+          performedBy: courtUser?.name || 'Judge',
+          performedById: courtUser?.uid || '',
+        });
+      }
+
+      await updateDoc(caseRef, updates);
+
+      setShowEditModal(false);
+      setSelectedCase(null);
+      setEditForm({ status: '', nextHearingDate: '', judgeNotes: '' });
+    } catch (error) {
+      console.error('Error updating case:', error);
+      alert('Failed to update case. Please try again.');
+    }
+  };
+  
+  const addCaseActivity = async (caseId: string, activity: {
+    action: string;
+    description: string;
+    performedBy: string;
+    performedById: string;
+  }) => {
+    try {
+      const caseRef = doc(db, 'cases', caseId);
+      await updateDoc(caseRef, {
+        activities: arrayUnion({
+          ...activity,
+          timestamp: new Date(),
+          id: `activity-${Date.now()}`,
+        }),
+      });
+    } catch (error) {
+      console.error('Error adding activity:', error);
     }
   };
 
@@ -384,16 +477,33 @@ service cloud.firestore {
                               </button>
                             )}
                             {hasPermission(PERMISSIONS.CASE_EDIT) && (
-                              <button
-                                onClick={() => {
-                                  setSelectedCase(caseItem);
-                                  setShowStatusModal(true);
-                                }}
-                                className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
-                                title="Update Status"
-                              >
-                                <Edit className="w-5 h-5" />
-                              </button>
+                              <>
+                                <button
+                                  onClick={() => {
+                                    setSelectedCase(caseItem);
+                                    setEditForm({
+                                      status: caseItem.status,
+                                      nextHearingDate: caseItem.nextHearingDate?.toISOString().split('T')[0] || '',
+                                      judgeNotes: '',
+                                    });
+                                    setShowEditModal(true);
+                                  }}
+                                  className="p-2 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                                  title="Edit Case"
+                                >
+                                  <Edit className="w-5 h-5" />
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setSelectedCase(caseItem);
+                                    setShowStatusModal(true);
+                                  }}
+                                  className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                  title="Quick Status Update"
+                                >
+                                  <Activity className="w-5 h-5" />
+                                </button>
+                              </>
                             )}
                           </div>
                         </td>
@@ -451,6 +561,140 @@ service cloud.firestore {
               >
                 Cancel
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Enhanced Edit Modal */}
+      {showEditModal && selectedCase && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full p-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="text-2xl font-bold text-slate-900">Update Case</h3>
+                <p className="text-slate-600 mt-1">
+                  Case: <span className="font-mono font-semibold">{selectedCase.caseNumber}</span>
+                </p>
+                <p className="text-slate-700 font-medium">{selectedCase.caseTitle}</p>
+              </div>
+              <div className="flex items-center gap-2 px-4 py-2 bg-green-50 border border-green-200 rounded-lg">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                <span className="text-green-700 text-sm font-semibold">Real-Time Sync</span>
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              {/* Current Case Info */}
+              <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
+                <h4 className="font-semibold text-slate-900 mb-3">Current Information</h4>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-slate-600 mb-1">Current Status</p>
+                    <p className="font-bold text-slate-900">{getStatusConfig(selectedCase.status).label}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-600 mb-1">Next Hearing</p>
+                    <p className="font-bold text-slate-900">
+                      {selectedCase.nextHearingDate?.toLocaleDateString() || 'Not Set'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-slate-600 mb-1">Last Updated By</p>
+                    <p className="font-bold text-slate-900">{selectedCase.lastModifiedByName || 'System'}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-600 mb-1">Last Update</p>
+                    <p className="font-bold text-slate-900">{selectedCase.updatedAt?.toLocaleString()}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Update Form */}
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">
+                    Update Case Status
+                  </label>
+                  <select
+                    value={editForm.status}
+                    onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+                    className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-amber-500 focus:ring-2 focus:ring-amber-200 focus:outline-none font-medium text-slate-900 transition-all"
+                  >
+                    {statusOptions.map((status) => (
+                      <option key={status} value={status}>
+                        {getStatusConfig(status).label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">
+                    <Calendar className="w-4 h-4 inline mr-2" />
+                    Next Hearing Date
+                  </label>
+                  <input
+                    type="date"
+                    value={editForm.nextHearingDate}
+                    onChange={(e) => setEditForm({ ...editForm, nextHearingDate: e.target.value })}
+                    className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-amber-500 focus:ring-2 focus:ring-amber-200 focus:outline-none font-medium text-slate-900 transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">
+                    <MessageSquare className="w-4 h-4 inline mr-2" />
+                    Add Note/Update for Citizen
+                  </label>
+                  <textarea
+                    value={editForm.judgeNotes}
+                    onChange={(e) => setEditForm({ ...editForm, judgeNotes: e.target.value })}
+                    placeholder="Add notes about this case update. This will be visible to the citizen..."
+                    className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-amber-500 focus:ring-2 focus:ring-amber-200 focus:outline-none font-medium text-slate-900 transition-all resize-none"
+                    rows={4}
+                  />
+                  <p className="text-xs text-slate-500 mt-2">
+                    <Bell className="w-3 h-3 inline mr-1" />
+                    Citizens will see this update in real-time on their portal
+                  </p>
+                </div>
+              </div>
+
+              {/* Info Box */}
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-blue-900 font-semibold text-sm mb-1">Real-Time Updates</p>
+                    <p className="text-blue-700 text-xs">
+                      All changes made here will be immediately visible to the citizen on their portal. 
+                      They'll see your updates without needing to refresh the page.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-4 border-t border-slate-200">
+                <button
+                  onClick={handleUpdateCase}
+                  className="flex-1 px-6 py-3 bg-amber-500 text-white rounded-xl font-bold hover:bg-amber-600 transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+                >
+                  <Save className="w-5 h-5" />
+                  Save & Notify Citizen
+                </button>
+                <button
+                  onClick={() => {
+                    setShowEditModal(false);
+                    setSelectedCase(null);
+                    setEditForm({ status: '', nextHearingDate: '', judgeNotes: '' });
+                  }}
+                  className="px-6 py-3 border-2 border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 transition-all"
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
           </div>
         </div>

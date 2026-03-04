@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Eye, EyeOff, AlertCircle, Loader2, ArrowRight, Github, ChevronDown } from 'lucide-react';
-import { auth, db } from '../../firebase';
+import { Eye, EyeOff, AlertCircle, Loader2, ArrowRight, Github } from 'lucide-react';
+import { auth } from '../../firebase';
 import { 
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword, 
@@ -8,7 +8,6 @@ import {
   GithubAuthProvider, 
   signInWithPopup 
 } from 'firebase/auth';
-import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { LOGO_URL } from '../../utils/mockData';
 
 const AuthPage = () => {
@@ -23,7 +22,6 @@ const AuthPage = () => {
   const [forgotEmail, setForgotEmail] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
   const [validationErrors, setValidationErrors] = useState<{ email?: string; password?: string }>({});
-  const [accountType, setAccountType] = useState<'citizen' | 'court'>('citizen');
 
   // Calculate password strength
   const getPasswordStrength = () => {
@@ -74,15 +72,7 @@ const AuthPage = () => {
       if (isLogin) {
         await signInWithEmailAndPassword(auth, email, password);
       } else {
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        const user = userCredential.user;
-        await setDoc(doc(db, 'users', user.uid), {
-          uid: user.uid,
-          email: user.email || email,
-          role: accountType,
-          createdAt: serverTimestamp(),
-          lastLogin: serverTimestamp()
-        });
+        await createUserWithEmailAndPassword(auth, email, password);
       }
       setShowSuccess(true);
       setTimeout(() => {
@@ -503,27 +493,6 @@ const AuthPage = () => {
                 )}
               </div>
 
-              {/* Account Type (Signup Only) */}
-              {!isLogin && (
-                <div className="space-y-2 form-group">
-                  <label className="text-sm font-semibold text-slate-900 ml-1 block">Create Account For</label>
-                  <div className="relative">
-                    <select
-                      value={accountType}
-                      onChange={(e) => setAccountType(e.target.value as 'citizen' | 'court')}
-                      className="auth-input w-full p-4 bg-slate-50 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 outline-none transition-all font-medium text-slate-800 appearance-none pr-12 hover:border-slate-300"
-                    >
-                      <option value="citizen">Citizen Portal (Public Features)</option>
-                      <option value="court">Court/Judge Portal</option>
-                    </select>
-                    <ChevronDown className="w-5 h-5 text-slate-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
-                  </div>
-                  <p className="text-xs text-slate-500 ml-1">
-                    Court/Judge accounts are restricted to official court users only.
-                  </p>
-                </div>
-              )}
-
               {/* Remember Me & Forgot Password */}
               {isLogin && (
                 <div className="form-group flex items-center justify-between">
@@ -620,7 +589,6 @@ const AuthPage = () => {
                     setIsLogin(!isLogin);
                     setValidationErrors({});
                     setError(null);
-                    setAccountType('citizen');
                   }}
                   className="text-slate-900 font-bold hover:text-amber-600 transition-all duration-300 toggle-text inline-block hover:scale-105 text-sm"
                 >

@@ -1,4 +1,5 @@
 // Court Portal Component Exports
+export { default as CourtHomePage } from './CourtHomePage';
 export { default as JudgeDashboard } from './JudgeDashboard';
 export { default as CaseStatusTracking } from './CaseStatusTracking';
 export { default as NoticeGenerator } from './NoticeGenerator';

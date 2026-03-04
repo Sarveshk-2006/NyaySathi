@@ -34,7 +34,7 @@ import {
 } from './components/pages';
 
 // Court Portal Components
-import { JudgeDashboard, CaseStatusTracking, NoticeGenerator, HearingSuccessRate } from './components/pages/court';
+import { CourtHomePage, JudgeDashboard, CaseStatusTracking, NoticeGenerator, HearingSuccessRate } from './components/pages/court';
 import { CourtAuthProvider } from './contexts/CourtAuthContext';
 
 // Utils
@@ -55,7 +55,7 @@ function App() {
     
     const renderCourtPage = () => (
       <CourtAuthProvider>
-        <JudgeDashboard />
+        <CourtHomePage onNavClick={setCurrentPage} />
       </CourtAuthProvider>
     );
     
@@ -99,6 +99,12 @@ function App() {
         return <CommunityForum />;
       case 'court-dashboard':
         return renderCourtPage();
+      case 'court-judge-dashboard':
+        return (
+          <CourtAuthProvider>
+            <JudgeDashboard />
+          </CourtAuthProvider>
+        );
       case 'court-cases':
         return (
           <CourtAuthProvider>
@@ -117,14 +123,27 @@ function App() {
             <HearingSuccessRate />
           </CourtAuthProvider>
         );
+      case 'home':
+        // If user is a court user and navigates to home, show court dashboard
+        if (userRole === 'court') {
+          return renderCourtPage();
+        }
+        return <HomePage onNavClick={setCurrentPage} />;
       default: 
-        return <HomePage onNavClick={setCurrentPage} userRole={userRole} />;
+        // If user is a court user on any unknown page, show court dashboard
+        if (userRole === 'court') {
+          return renderCourtPage();
+        }
+        return <HomePage onNavClick={setCurrentPage} />;
     }
   };
 
-  const NavGroup = ({ title, items }: { title: string, items: {label: string, page: string, icon: any}[] }) => (
+  const NavGroup = ({ title, items, defaultPage }: { title: string, items: {label: string, page: string, icon: any}[], defaultPage?: string }) => (
     <div className="relative group">
-      <button className="px-4 py-2 text-slate-600 font-bold hover:text-slate-900 flex items-center gap-1 transition-colors text-sm uppercase tracking-wide">
+      <button 
+        onClick={() => defaultPage && setCurrentPage(defaultPage)}
+        className="px-4 py-2 text-slate-600 font-bold hover:text-slate-900 flex items-center gap-1 transition-colors text-sm uppercase tracking-wide"
+      >
         {title} <ChevronRight className="w-3 h-3 transition-transform duration-200 group-hover:rotate-90 text-amber-500" />
       </button>
       <div className="absolute top-full left-0 pt-4 w-64 hidden group-hover:block z-50 animate-fade-in-up">
@@ -174,8 +193,10 @@ function App() {
               {userRole === 'court' ? (
                 <NavGroup
                   title="Court Portal"
+                  defaultPage="court-dashboard"
                   items={[
                     { label: 'Dashboard', page: 'court-dashboard', icon: Gavel },
+                    { label: 'Full Judge Dashboard', page: 'court-judge-dashboard', icon: Gavel },
                     { label: 'Case Management', page: 'court-cases', icon: FileSearch },
                     { label: 'Notice Generator', page: 'court-notices', icon: FileText },
                     { label: 'Analytics', page: 'court-analytics', icon: BrainCircuit }
