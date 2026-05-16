@@ -422,8 +422,14 @@ SEAL OF THE COURT`,
                       <input
                         type="tel"
                         value={recipientPhone}
-                        onChange={(e) => setRecipientPhone(e.target.value)}
-                        placeholder="+91 9876543210"
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                            setRecipientPhone(val);
+                          }}
+                          placeholder="9876543210"
+                          pattern="[0-9]{10}"
+                          maxLength={10}
+                          title="Please enter a valid 10-digit mobile number"
                         className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 font-medium text-slate-800 placeholder-slate-500 transition-all hover:border-slate-300"
                       />
                     </div>

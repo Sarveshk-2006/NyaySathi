@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Scroll, CalendarDays, Landmark, FileText, Gavel, Scale, Bookmark, BookUser } from 'lucide-react';
+import { Search, Scroll, CalendarDays, Landmark, FileText, Gavel, Scale, Bookmark, BookUser, AlertCircle } from 'lucide-react';
 import { db } from '../../firebase';
 import { collection, query, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '../../contexts/AuthContext';
 import { PageContainer } from '../layout/PageContainer';
 import { Card } from '../shared';
+import { useCases } from '../../contexts/CasesContext';
 import casesDataSource from '../../data/cases.json';
 
 const casesData = casesDataSource || [];
 
 const CaseLawDatabase = () => {
   const { currentUser } = useAuth();
+  const { cases: firestoreCases, loading: firestoreLoading, error: firestoreError } = useCases();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [sortBy, setSortBy] = useState('year');
@@ -18,8 +20,9 @@ const CaseLawDatabase = () => {
   const [bookmarkedCases, setBookmarkedCases] = useState<string[]>([]);
   const [cases, setCases] = useState<any[]>(casesData); 
   const [isDbLoading, setIsDbLoading] = useState(false);
+  const [useFirestore, setUseFirestore] = useState(true); // Toggle for Firestore vs local data
 
-  const categories = ['All', 'Fraud', 'Murder', 'Theft', 'Rape', 'Human Trafficking', 'Extortion'];
+  const categories = ['All', 'Criminal', 'Civil', 'Family', 'Fraud', 'Murder', 'Theft', 'Rape', 'Human Trafficking', 'Extortion'];
 
   const fetchCasesFromDB = async (crimeType: string) => {
     if (crimeType === 'All') { setCases(casesData); return; }
@@ -41,7 +44,39 @@ const CaseLawDatabase = () => {
     finally { setIsDbLoading(false); }
   };
 
-  useEffect(() => { fetchCasesFromDB(selectedCategory); }, [selectedCategory]);
+  // Transform Firestore cases to match the CaseLawDatabase format
+  const transformFirestoreCases = (firestoreCases: any[]) => {
+    return firestoreCases.map(c => ({
+      id: c.id,
+      title: c.caseTitle,
+      court: c.courtName,
+      year: c.filingDate ? new Date(c.filingDate.seconds * 1000).getFullYear().toString() : '2026',
+      caseNumber: c.caseNumber,
+      category: c.caseType === 'criminal' ? 'Criminal' : c.caseType === 'civil' ? 'Civil' : c.caseType === 'family' ? 'Family' : 'Other',
+      summary: c.synopsis || 'No summary available',
+      keyholding: c.ipcSections?.join(', ') || 'Not specified',
+      relatedSections: c.ipcSections || [],
+      impact: `Case Status: ${c.status}. Next Hearing: ${c.nextHearingDate ? new Date(c.nextHearingDate.seconds * 1000).toLocaleDateString() : 'Not scheduled'}`,
+      // Keep original Firestore data for updates
+      _originalFirestoreCase: c
+    }));
+  };
+
+  // Use Firestore cases when available
+  useEffect(() => {
+    if (useFirestore && firestoreCases.length > 0) {
+      const transformed = transformFirestoreCases(firestoreCases);
+      setCases(transformed);
+    } else if (!useFirestore) {
+      fetchCasesFromDB(selectedCategory);
+    }
+  }, [firestoreCases, useFirestore, selectedCategory]);
+
+  useEffect(() => { 
+    if (!useFirestore) {
+      fetchCasesFromDB(selectedCategory); 
+    }
+  }, [selectedCategory]);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -73,6 +108,46 @@ const CaseLawDatabase = () => {
   return (
     <PageContainer title="Case Law Database" subtitle="Search landmark Indian court cases and their rulings.">
       <Card className="p-8">
+        {/* Real-time sync indicator */}
+        {useFirestore && (
+          <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+              <div>
+                <p className="text-blue-800 font-semibold text-sm">Real-Time Sync Active</p>
+                <p className="text-blue-700 text-xs">Cases are synced with Court Portal. Changes update instantly.</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setUseFirestore(false)}
+              className="px-4 py-2 bg-white hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-medium transition-colors border border-blue-200"
+            >
+              Switch to Local Data
+            </button>
+          </div>
+        )}
+
+        {!useFirestore && (
+          <div className="mb-6 bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 text-amber-600" />
+              <p className="text-amber-800 font-semibold text-sm">Using Local Database</p>
+            </div>
+            <button
+              onClick={() => setUseFirestore(true)}
+              className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-medium transition-colors"
+            >
+              Enable Real-Time Sync
+            </button>
+          </div>
+        )}
+
+        {firestoreError && useFirestore && (
+          <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+            <p className="text-red-800 text-sm">⚠️ Error loading real-time cases: {firestoreError}</p>
+          </div>
+        )}
+
         <div className="flex flex-col md:flex-row gap-4 mb-8">
           <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search cases..." className="flex-1 p-4 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-slate-900/10 transition-all font-medium text-slate-800" />
           <select value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)} className="p-4 bg-slate-50 border border-slate-200 rounded-xl outline-none font-medium text-slate-700">{categories.map(c => <option key={c} value={c}>{c}</option>)}</select>

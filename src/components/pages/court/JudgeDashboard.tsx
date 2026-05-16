@@ -417,6 +417,13 @@ const JudgeDashboard = () => {
         recordedBy: courtUser?.uid,
       });
       setShowScheduleHearing(false);
+      
+      // Refresh the calendar and dashboard data to show the new hearing immediately
+      loadCalendarData(currentMonth);
+      loadDashboardData();
+      
+      // Ensure the calendar modal is visible so the user sees the update
+      setShowCalendar(true);
     } catch (error) {
       console.error('Error scheduling hearing:', error);
       alert('Failed to schedule hearing. Please try again.');
@@ -640,19 +647,31 @@ const JudgeDashboard = () => {
               <div>
                 {selectedDate ? (
                   <div className="space-y-4">
-                    <div className="bg-gradient-to-r from-slate-900 to-slate-700 rounded-2xl p-4 text-white">
-                      <p className="text-sm font-medium opacity-80">Hearings on</p>
-                      <h4 className="text-xl font-bold">
-                        {selectedDate.toLocaleDateString('en-IN', { 
-                          weekday: 'long',
-                          day: 'numeric',
-                          month: 'long',
-                          year: 'numeric'
-                        })}
-                      </h4>
-                      <p className="text-sm mt-1 opacity-90">
-                        {selectedDayHearings.length} hearing(s) scheduled
-                      </p>
+                    <div className="bg-gradient-to-r from-slate-900 to-slate-700 rounded-2xl p-4 text-white flex justify-between items-center">
+                      <div>
+                        <p className="text-sm font-medium opacity-80">Hearings on</p>
+                        <h4 className="text-xl font-bold">
+                          {selectedDate.toLocaleDateString('en-IN', { 
+                            weekday: 'long',
+                            day: 'numeric',
+                            month: 'long',
+                            year: 'numeric'
+                          })}
+                        </h4>
+                        <p className="text-sm mt-1 opacity-90">
+                          {selectedDayHearings.length} hearing(s) scheduled
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setShowCalendar(false);
+                          setShowScheduleHearing(true);
+                        }}
+                        className="px-4 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/20 rounded-xl transition-all font-bold text-sm flex items-center gap-2"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Add Hearing
+                      </button>
                     </div>
                     
                     {selectedDayHearings.length === 0 ? (
@@ -717,7 +736,16 @@ const JudgeDashboard = () => {
       hearingTime: '',
       courtRoomNumber: '1',
       purpose: 'Arguments',
+      citizenEmail: '', // Added for citizen announcements
     });
+
+    useEffect(() => {
+      if (showScheduleHearing && selectedDate) {
+        const offset = selectedDate.getTimezoneOffset() * 60000;
+        const localISOTime = (new Date(selectedDate.getTime() - offset)).toISOString().slice(0, 10);
+        setFormData(prev => ({ ...prev, hearingDate: localISOTime }));
+      }
+    }, [showScheduleHearing, selectedDate]);
     
     if (!showScheduleHearing) return null;
     
@@ -732,6 +760,7 @@ const JudgeDashboard = () => {
         lawyersPresent: [],
         documentsSubmitted: [],
         notes: '',
+        citizenEmail: formData.citizenEmail || null,
       });
     };
     
@@ -787,6 +816,18 @@ const JudgeDashboard = () => {
                 placeholder="State vs John Doe"
                 required
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-2">Citizen Email (For notifications)</label>
+              <input
+                type="email"
+                value={formData.citizenEmail}
+                onChange={(e) => setFormData({ ...formData, citizenEmail: e.target.value })}
+                className="w-full px-4 py-2.5 border-2 border-slate-200 rounded-xl focus:border-slate-900 focus:outline-none font-medium"
+                placeholder="citizen@example.com (optional)"
+              />
+              <p className="text-xs text-slate-500 mt-1">If provided, this citizen will see an announcement on their dashboard.</p>
             </div>
             
             <div className="grid grid-cols-2 gap-4">

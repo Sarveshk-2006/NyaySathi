@@ -1,11 +1,37 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   FileText, BrainCircuit, Users, Gavel, MessageCircle, Trophy, Mic, 
   Search, Scale, BookUser, MessageSquare, Scroll, Landmark, ChevronRight,
-  ArrowRight, Upload, CheckCircle2, Users as UsersIcon
+  ArrowRight, Upload, CheckCircle2, Users as UsersIcon, Megaphone
 } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { db } from '../../firebase';
+import { Hearing } from '../../types/court';
 
 export const HomePage = ({ onNavClick }: { onNavClick: (page: string) => void }) => {
+  const { currentUser } = useAuth();
+  const [userHearings, setUserHearings] = useState<Hearing[]>([]);
+
+  useEffect(() => {
+    if (!currentUser?.email) return;
+
+    const q = query(
+      collection(db, 'hearings'),
+      where('citizenEmail', '==', currentUser.email)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const h: Hearing[] = [];
+      snapshot.forEach((doc) => {
+        h.push({ id: doc.id, ...doc.data() } as Hearing);
+      });
+      setUserHearings(h);
+    });
+
+    return () => unsubscribe();
+  }, [currentUser]);
+
   const coreTools = [
     { title: "Smart Chat", desc: "Chat with AI to solve legal queries instantly.", icon: MessageCircle, action: 'chat' },
     { title: "Outcome Predictor", desc: "AI + Database powered case outcome prediction.", icon: BrainCircuit, action: 'outcome' },
@@ -26,7 +52,43 @@ export const HomePage = ({ onNavClick }: { onNavClick: (page: string) => void })
 
   return (
     <div className="pb-20 overflow-x-hidden bg-slate-50">
-      
+      {userHearings.length > 0 && (
+        <div className="bg-red-600/90 text-white px-4 py-2.5 flex items-center gap-4 overflow-hidden shadow-sm relative z-40">
+          <div className="flex items-center gap-2 font-bold whitespace-nowrap bg-red-700 px-3 py-1 rounded-full z-10 shrink-0 shadow-lg tracking-wide text-sm">
+            <Megaphone className="w-4 h-4 animate-pulse" />
+            URGENT UPDATE
+          </div>
+          <div className="overflow-hidden w-full relative h-[24px] flex items-center">
+            <div className="absolute whitespace-nowrap" style={{ animation: 'marquee 30s linear infinite' }}>
+              <style>
+                {`
+                  @keyframes marquee {
+                    0% { transform: translateX(100vw); }
+                    100% { transform: translateX(-100%); }
+                  }
+                  .hover-pause:hover {
+                    animation-play-state: paused;
+                  }
+                `}
+              </style>
+              <div className="hover-pause inline-block">
+                {userHearings.map((h, i) => (
+                  <span key={h.id} className="mr-16 inline-flex items-center gap-3 text-sm">
+                    <span className="w-2 h-2 rounded-full bg-red-300 animate-pulse"></span>
+                    <span className="font-bold text-amber-200">Case #{h.caseNumber || h.caseId} Scheduled:</span>
+                    <span className="flex items-center gap-1.5 opacity-90">Date: <span className="font-medium text-white">{typeof h.hearingDate === 'string' ? h.hearingDate : (h?.hearingDate as any)?.toDate?.()?.toLocaleDateString() || (h as any).date || 'TBD'}</span></span>
+                    <span className="opacity-40">|</span>
+                    <span className="flex items-center gap-1.5 opacity-90">Time: <span className="font-medium text-white">{h.hearingTime || (h as any).time || 'TBD'}</span></span>
+                    <span className="opacity-40">|</span>
+                    <span className="flex items-center gap-1.5 opacity-90">Room: <span className="font-medium text-white">{h.courtRoomNumber || (h as any).courtRoom || 'TBD'}</span></span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* HERO SECTION - Deep Navy Background */}
       <section className="relative min-h-[85vh] flex items-center justify-center overflow-hidden bg-slate-900 text-white">
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 mix-blend-overlay"></div>

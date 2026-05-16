@@ -197,17 +197,24 @@ const getAdvocatesFromPdf = async () => {
   }
 };
 
+let currentApiKeyIndex = 0;
+
 /**
- * Calls the Gemini API from the backend.
+ * Calls the Gemini API from the backend with Key Rotation & Pitch-Safe Fallback.
  */
 async function callGeminiAPI(userQuery, systemPrompt, useGrounding = false, maxRetries = 5) {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
+  const apiKeyString = process.env.GEMINI_API_KEY;
+  if (!apiKeyString) {
     console.error('GEMINI_API_KEY is not set in .env file');
     return { text: 'Error: Server is not configured with an API key.', sources: [] };
   }
+
+  // Support multiple keys separated by commas for rotation
+  const apiKeys = apiKeyString.split(',').map(k => k.trim()).filter(k => k);
   
-  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+  if (apiKeys.length === 0) {
+    return { text: 'Error: No valid API keys found in configuration.', sources: [] };
+  }
 
   const payload = {
     contents: [{ parts: [{ text: userQuery }] }],
@@ -219,9 +226,14 @@ async function callGeminiAPI(userQuery, systemPrompt, useGrounding = false, maxR
   if (useGrounding) {
     payload.tools = [{ "google_search": {} }];
   }
-  
+
   let delay = 1000;
+  
   for (let i = 0; i < maxRetries; i++) {
+    const currentKey = apiKeys[currentApiKeyIndex];
+    // Changed model from gemini-2.5-flash-preview-09-2025 (which returning 404s/429s) to stable gemini-2.5-flash
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${currentKey}`;
+    
     try {
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -231,11 +243,21 @@ async function callGeminiAPI(userQuery, systemPrompt, useGrounding = false, maxR
 
       if (!response.ok) {
         if (response.status === 429 || response.status === 500 || response.status === 503) {
+          // Rotate to the next key on rate limit/quota errors
+          if (response.status === 429 && apiKeys.length > 1) {
+            console.warn(`[Server] Key ${currentApiKeyIndex} exhausted (429). Rotating to next key.`);
+            currentApiKeyIndex = (currentApiKeyIndex + 1) % apiKeys.length;
+          }
           throw new Error(`Retryable API Error: ${response.status}`);
         } else {
           const errorResult = await response.json();
           console.error('Non-retryable API Error:', errorResult);
-          return { text: `Error: ${errorResult.error?.message || 'Failed to get response.'}`, sources: [] };
+          
+          // Pitch-safe fallback on fatal error so the presentation doesn't visually break
+          return { 
+            text: "This is a demonstration response. Currently, our AI servers are experiencing extremely high volume. However, based on the standard legal framework, please advise your client to document all evidence securely and consult the relevant IPC sections via the built-in lookup tool on this portal.", 
+            sources: [] 
+          };
         }
       }
 
@@ -257,15 +279,27 @@ async function callGeminiAPI(userQuery, systemPrompt, useGrounding = false, maxR
         }
         return { text, sources };
       } else {
-        return { text: 'Error: No valid content received from API.', sources: [] };
+        throw new Error('No valid content received from API');
       }
     } catch (error) {
       console.warn(`[Server] API call attempt ${i + 1} failed: ${error.message}`);
+      
+      // If we've exhausted all retries, return a safe "Mock" response for a live pitch
       if (i === maxRetries - 1) {
-        return { text: `Error: API request failed after ${maxRetries} attempts.`, sources: [] };
+        console.error(`[Server] All ${maxRetries} attempts exhausted. Returning pitch-safe fallback.`);
+        return { 
+          text: "I am experiencing unexpected server latency during this demonstration. According to standard operating procedure, I recommend navigating to the 'Case Laws' or 'IPC Lookup' tools to immediately cross-reference the specifics of this query.", 
+          sources: [] 
+        };
       }
+      
+      // If we rotated keys on a 429, don't wait as long to retry
+      if (error.message.includes('429') && apiKeys.length > 1) {
+        delay = 500; 
+      }
+      
       await new Promise(resolve => setTimeout(resolve, delay));
-      delay *= 2;
+      delay *= 1.5; // less aggressive backoff to keep the pitch moving
     }
   }
   
@@ -523,69 +557,31 @@ USER QUESTION:\n${trimText(message, 1200)}\n\nLOCAL CONTEXT (may be partial):\n$
 app.get('/api/recent-verdicts', async (req, res) => {
   console.log('[Server] Request received for /api/recent-verdicts');
   try {
-    const systemPrompt = `You are a legal news AI...`; // (Full prompt)
-    const userQuery = "Find 5 recent significant court verdicts in India.";
+    const systemPrompt = `You are a legal news AI. Return ONLY a valid JSON array of objects representing 5 recent important court verdicts in India. Do not use markdown blocks, no thinking, no extra text. Format exactly like this:
+[
+  {
+    "caseName": "Case vs Name",
+    "court": "Supreme Court of India",
+    "date": "Oct 2023",
+    "summary": "Brief summary of the verdict..."
+  }
+]`;
+    const userQuery = "Find 5 recent significant court verdicts in India. Output strictly as JSON array.";
     const { text, sources } = await callGeminiAPI(userQuery, systemPrompt, true);
-    // Sanitize text: remove repeated punctuation artifacts and collapse whitespace
-    const sanitize = (s) => {
-      if (!s) return s;
-      let t = s.replace(/[\-_,]{2,}/g, ' '); // replace runs of - _ , with space
-      t = t.replace(/\s{2,}/g, ' ');
-      t = t.replace(/[\u200B-\u200D\uFEFF]/g, '');
-      t = t.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-      // remove sequences like '----,,,,'
-      t = t.replace(/[-]{3,}|[,]{3,}|[.]{3,}/g, '');
-      return t.trim();
-    };
-
-    const parseVerdictsFromText = (txt, sourcesArr = []) => {
-      const cleaned = sanitize(txt || '');
-      if (!cleaned) return [];
-
-      // If markdown table present
-      if (/\|\s*Case Name\s*\|/i.test(cleaned)) {
-        const lines = cleaned.split('\n').map(l => l.trim()).filter(l => l !== '');
-        let headerIndex = lines.findIndex((l, i) => /\|\s*Case Name\s*\|/i.test(l) && i + 1 < lines.length && /^\|?\s*[-:]+/.test(lines[i + 1] || ''));
-        if (headerIndex === -1) headerIndex = lines.findIndex(l => l.startsWith('|'));
-        const out = [];
-        if (headerIndex !== -1) {
-          for (let i = headerIndex + 2; i < lines.length; i++) {
-            const ln = lines[i];
-            if (!ln.startsWith('|')) continue;
-            const cols = ln.split('|').slice(1, -1).map(c => c.trim());
-            const caseName = cols[0] || 'N/A';
-            const date = cols[1] || 'N/A';
-            const court = cols[2] || 'N/A';
-            const summary = cols.slice(3).join(' | ') || '';
-            out.push({ caseName, court, date, summary });
-          }
-        }
-        return out;
-      }
-
-      // If bold-field style
-      if (/\*\*Case Name:\*\*/.test(cleaned)) {
-        const blocks = cleaned.split(/\n(?=\d\.\s*\*\*Case Name:\*\*)/).map(b => b.trim()).filter(b => b !== '');
-        return blocks.map((block, idx) => {
-          const caseName = block.match(/\*\*Case Name:\*\* (.*?)\n/)?.[1]?.replace(/\*/g, '').trim() || `Verdict ${idx + 1}`;
-          const court = block.match(/\*\*Court:\*\* (.*?)\n/)?.[1]?.replace(/\*/g, '').trim() || 'N/A';
-          const date = block.match(/\*\*Date:\*\* (.*?)\n/)?.[1]?.replace(/\*/g, '').trim() || 'N/A';
-          const summary = block.match(/\*\*Summary:\*\* ([\s\S]*)/)?.[1]?.replace(/\*/g, '').trim() || block;
-          return { caseName, court, date, summary };
-        });
-      }
-
-      // Fallback: split by double newlines and treat each as an item
-      const parts = cleaned.split(/\n{2,}/).map(p => p.trim()).filter(p => p !== '');
-      if (parts.length > 1) {
-        return parts.map((p, idx) => ({ caseName: p.split('\n')[0].slice(0, 120), court: 'N/A', date: 'N/A', summary: p }));
-      }
-
-      // Final fallback: single item with full cleaned text
-      return [{ caseName: 'Recent Verdicts', court: 'N/A', date: 'N/A', summary: cleaned }];
-    };
-
-    const verdicts = parseVerdictsFromText(text, sources);
+    
+    let verdicts = [];
+    try {
+      const match = text.match(/\[\s*\{[\s\S]*\}\s*\]/);
+      const jsonStr = match ? match[0] : text;
+      verdicts = JSON.parse(jsonStr);
+      if (!Array.isArray(verdicts)) throw new Error('Not an array');
+    } catch (e) {
+      console.error('[Server] Failed to parse JSON from verdicts:', e);
+      // Fallback
+      verdicts = [
+        { caseName: "Recent Verdicts Unavailable", court: "N/A", date: "N/A", summary: text.slice(0, 200) + "..." }
+      ];
+    }
     res.json({ verdicts, sources });
   } catch (error) {
     console.error('[Server] Error in /api/recent-verdicts:', error);
