@@ -17,7 +17,7 @@ if (!root) {
 ReactDOM.createRoot(root).render(
   <React.StrictMode>
     <ErrorBoundary>
-      <BrowserRouter>
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         {/* Wrap your App in the AuthProvider and CasesProvider for real-time case sync */}
         <CasesProvider>
           <AuthProvider>

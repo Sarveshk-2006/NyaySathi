@@ -1,0 +1,21 @@
+{
+  "version": 2,
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "framework": "vite",
+  "rewrites": [
+    { "source": "/api/advocates", "destination": "/api/advocates" },
+    { "source": "/api/generate-document", "destination": "/api/generate-document" },
+    { "source": "/api/predict-case", "destination": "/api/predict-case" },
+    { "source": "/api/predict-outcome", "destination": "/api/predict-outcome" },
+    { "source": "/api/smart-chat", "destination": "/api/smart-chat" },
+    { "source": "/api/recent-verdicts", "destination": "/api/recent-verdicts" },
+    { "source": "/api/analyze-document", "destination": "/api/analyze-document" },
+    { "source": "/api/upload-and-summarize", "destination": "/api/upload-and-summarize" },
+    { "source": "/api/cases/:crimeType", "destination": "/api/cases/[crimeType]" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ],
+  "env": {
+    "GEMINI_API_KEY": "@gemini_api_key"
+  }
+}

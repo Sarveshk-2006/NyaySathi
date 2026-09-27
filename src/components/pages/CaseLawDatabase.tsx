@@ -28,7 +28,7 @@ const CaseLawDatabase = () => {
     if (crimeType === 'All') { setCases(casesData); return; }
     setIsDbLoading(true);
     try {
-      const response = await fetch(`http://localhost:8001/api/cases/${crimeType}`);
+      const response = await fetch(`/api/cases/${crimeType}`);
       if (!response.ok) throw new Error('Failed to fetch');
       const sqlData = await response.json();
       const transformedCases = sqlData.map((c: any) => ({

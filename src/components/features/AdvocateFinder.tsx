@@ -20,7 +20,7 @@ const AdvocateFinder = ({ onProfileSelect }: AdvocateFinderProps) => {
       setIsLoading(true);
       setError(null);
       try {
-        const response = await fetch('http://localhost:8001/api/advocates');
+        const response = await fetch('/api/advocates');
         if (!response.ok) {
           const errResult = await response.json().catch(() => null);
           throw new Error(errResult?.error || 'Failed to load advocates');

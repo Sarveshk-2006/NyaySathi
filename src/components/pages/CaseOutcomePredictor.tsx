@@ -38,7 +38,7 @@ const CaseOutcomePredictor = () => {
     setIsLoading(true);
     setResult(null);
     try {
-      const response = await fetch('http://localhost:8001/api/predict-outcome', {
+      const response = await fetch('/api/predict-outcome', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)

@@ -22,3 +22,17 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Environment files (never commit secrets)
+.env
+.env.local
+.env.production
+backend/.env
+
+# Python virtual env & compiled files
+.venv
+__pycache__
+*.pyc
+
+# SQLite database
+backend/uploaded_docs.db

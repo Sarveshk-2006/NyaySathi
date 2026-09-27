@@ -49,14 +49,8 @@ export const subscribeToRealTimeCases = (
         callback(cases);
       },
       (error) => {
-        // Handle permission errors gracefully
         if (error.code === 'permission-denied') {
-          console.error(
-            'Firestore Permission Denied. Please check:',
-            '1. Your Firestore security rules',
-            '2. That you are logged in',
-            '3. See FIRESTORE_RULES_FIX.md for help'
-          );
+          console.warn('Firestore sync paused: User not authenticated or rules restricting access. (See FIRESTORE_RULES_FIX.md if needed)');
         } else {
           console.error('Error subscribing to cases:', error);
         }

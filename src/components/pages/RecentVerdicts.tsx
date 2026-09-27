@@ -15,7 +15,7 @@ const RecentVerdicts = () => {
       setIsLoading(true);
       setError(null);
       try {
-        const response = await fetch('http://localhost:8001/api/recent-verdicts');
+        const response = await fetch('/api/recent-verdicts');
         let processedVerdicts = [];
         
         if (response.ok) {

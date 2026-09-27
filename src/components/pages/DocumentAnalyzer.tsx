@@ -36,7 +36,7 @@ const DocumentAnalyzer = () => {
       const formData = new FormData();
       formData.append('file', uploadedFile);
 
-      const response = await fetch('http://localhost:8001/api/analyze-document', {
+      const response = await fetch('/api/analyze-document', {
         method: 'POST',
         body: formData
       });

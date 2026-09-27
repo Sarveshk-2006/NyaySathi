@@ -31,7 +31,7 @@ const CasePredictor = () => {
 
     setIsLoading(true);
     try {
-      const response = await fetch('http://localhost:8001/api/predict-case', {
+      const response = await fetch('/api/predict-case', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ caseDescription: caseDescription.trim(), userId: currentUser?.uid })

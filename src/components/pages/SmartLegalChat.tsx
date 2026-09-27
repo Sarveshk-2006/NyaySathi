@@ -86,7 +86,7 @@ const SmartLegalChat = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch('http://localhost:8001/api/smart-chat', {
+      const response = await fetch('/api/smart-chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: userMsg, history: historyPayload, context: localContext, preferredLanguage })

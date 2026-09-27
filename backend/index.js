@@ -200,20 +200,20 @@ const getAdvocatesFromPdf = async () => {
 let currentApiKeyIndex = 0;
 
 /**
- * Calls the Gemini API from the backend with Key Rotation & Pitch-Safe Fallback.
+ * Calls the Gemini API from the backend with Model Fallback, Key Rotation & Clear Diagnostics.
  */
-async function callGeminiAPI(userQuery, systemPrompt, useGrounding = false, maxRetries = 5) {
+async function callGeminiAPI(userQuery, systemPrompt, useGrounding = false, maxRetries = 3) {
   const apiKeyString = process.env.GEMINI_API_KEY;
   if (!apiKeyString) {
-    console.error('GEMINI_API_KEY is not set in .env file');
-    return { text: 'Error: Server is not configured with an API key.', sources: [] };
+    console.error('[Server Error] GEMINI_API_KEY is not set in backend/.env file');
+    return { text: 'Error: Server is not configured with a GEMINI_API_KEY. Please add GEMINI_API_KEY to backend/.env', sources: [] };
   }
 
   // Support multiple keys separated by commas for rotation
   const apiKeys = apiKeyString.split(',').map(k => k.trim()).filter(k => k);
   
   if (apiKeys.length === 0) {
-    return { text: 'Error: No valid API keys found in configuration.', sources: [] };
+    return { text: 'Error: No valid API keys found in backend/.env file.', sources: [] };
   }
 
   const payload = {
@@ -227,83 +227,75 @@ async function callGeminiAPI(userQuery, systemPrompt, useGrounding = false, maxR
     payload.tools = [{ "google_search": {} }];
   }
 
-  let delay = 1000;
-  
-  for (let i = 0; i < maxRetries; i++) {
+  // List of models to try in order of stability/availability
+  const candidateModels = ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-2.5-flash'];
+  let keyAttempts = 0;
+
+  while (keyAttempts < apiKeys.length) {
     const currentKey = apiKeys[currentApiKeyIndex];
-    // Changed model from gemini-2.5-flash-preview-09-2025 (which returning 404s/429s) to stable gemini-2.5-flash
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${currentKey}`;
-    
-    try {
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
+    let keySuccess = false;
 
-      if (!response.ok) {
-        if (response.status === 429 || response.status === 500 || response.status === 503) {
-          // Rotate to the next key on rate limit/quota errors
-          if (response.status === 429 && apiKeys.length > 1) {
-            console.warn(`[Server] Key ${currentApiKeyIndex} exhausted (429). Rotating to next key.`);
-            currentApiKeyIndex = (currentApiKeyIndex + 1) % apiKeys.length;
+    for (const model of candidateModels) {
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${currentKey}`;
+      
+      try {
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          const candidate = result.candidates?.[0];
+
+          if (candidate && candidate.content?.parts?.[0]?.text) {
+            const text = candidate.content.parts[0].text;
+            let sources = [];
+            const groundingMetadata = candidate.groundingMetadata;
+
+            if (useGrounding && groundingMetadata && groundingMetadata.groundingAttributions) {
+              sources = groundingMetadata.groundingAttributions
+                .map(attribution => ({
+                  uri: attribution.web?.uri,
+                  title: attribution.web?.title,
+                }))
+                .filter(source => source.uri && source.title);
+            }
+            return { text, sources };
           }
-          throw new Error(`Retryable API Error: ${response.status}`);
+        }
+
+        const errorResult = await response.json().catch(() => ({}));
+        const errorMsg = errorResult.error?.message || response.statusText;
+
+        if (response.status === 403 || (response.status === 400 && errorMsg.includes('API key not valid'))) {
+          console.error(`[Server API Key Error] Key (${currentKey.slice(0, 8)}...) failed with status ${response.status}: ${errorMsg}`);
+          break;
+        } else if (response.status === 429) {
+          console.warn(`[Server API Limit] Key (${currentKey.slice(0, 8)}...) hit rate limit 429. Rotating key.`);
+          break;
+        } else if (response.status === 404) {
+          console.warn(`[Server Model Warning] Model ${model} returned 404 for key. Trying next candidate model.`);
+          continue;
         } else {
-          const errorResult = await response.json();
-          console.error('Non-retryable API Error:', errorResult);
-          
-          // Pitch-safe fallback on fatal error so the presentation doesn't visually break
-          return { 
-            text: "This is a demonstration response. Currently, our AI servers are experiencing extremely high volume. However, based on the standard legal framework, please advise your client to document all evidence securely and consult the relevant IPC sections via the built-in lookup tool on this portal.", 
-            sources: [] 
-          };
+          console.error(`[Server API Error] Model ${model} returned status ${response.status}: ${errorMsg}`);
         }
+      } catch (error) {
+        console.warn(`[Server Connection Error] Model ${model} attempt failed: ${error.message}`);
       }
-
-      const result = await response.json();
-      const candidate = result.candidates?.[0];
-
-      if (candidate && candidate.content?.parts?.[0]?.text) {
-        const text = candidate.content.parts[0].text;
-        let sources = [];
-        const groundingMetadata = candidate.groundingMetadata;
-
-        if (useGrounding && groundingMetadata && groundingMetadata.groundingAttributions) {
-          sources = groundingMetadata.groundingAttributions
-            .map(attribution => ({
-              uri: attribution.web?.uri,
-              title: attribution.web?.title,
-            }))
-            .filter(source => source.uri && source.title);
-        }
-        return { text, sources };
-      } else {
-        throw new Error('No valid content received from API');
-      }
-    } catch (error) {
-      console.warn(`[Server] API call attempt ${i + 1} failed: ${error.message}`);
-      
-      // If we've exhausted all retries, return a safe "Mock" response for a live pitch
-      if (i === maxRetries - 1) {
-        console.error(`[Server] All ${maxRetries} attempts exhausted. Returning pitch-safe fallback.`);
-        return { 
-          text: "I am experiencing unexpected server latency during this demonstration. According to standard operating procedure, I recommend navigating to the 'Case Laws' or 'IPC Lookup' tools to immediately cross-reference the specifics of this query.", 
-          sources: [] 
-        };
-      }
-      
-      // If we rotated keys on a 429, don't wait as long to retry
-      if (error.message.includes('429') && apiKeys.length > 1) {
-        delay = 500; 
-      }
-      
-      await new Promise(resolve => setTimeout(resolve, delay));
-      delay *= 1.5; // less aggressive backoff to keep the pitch moving
     }
+
+    // Move to next key
+    currentApiKeyIndex = (currentApiKeyIndex + 1) % apiKeys.length;
+    keyAttempts++;
   }
-  
-  return { text: 'Error: Unexpected error during API call.', sources: [] };
+
+  console.error('[Server Error] All Gemini API keys failed or were blocked. Returning error fallback.');
+  return { 
+    text: "⚠️ Gemini API Key issue detected: The configured GEMINI_API_KEY in backend/.env has been reported as leaked or invalidated by Google AI Studio. Please replace GEMINI_API_KEY in backend/.env with a new free key from https://aistudio.google.com/app/apikey and restart the backend.", 
+    sources: [] 
+  };
 }
 
 // --- API Endpoints ---
