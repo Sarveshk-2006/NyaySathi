@@ -1,73 +1,122 @@
-# Welcome to your Lovable project
+# ⚖️ Nyay Sathi (न्याय साथी) — Citizen Legal Buddy
 
-## Project info
+> **Access Justice Anytime, Anywhere.**  
+> An AI-powered legal assistance and rights awareness platform designed to democratize legal guidance for Indian citizens.
 
-**URL**: https://lovable.dev/projects/b1c3ec5c-6d1a-481a-87af-f2bfb8c4e32f
+---
 
-## How can I edit this code?
+## 🌟 Overview
 
-There are several ways of editing your application.
+**Nyay Sathi** bridges the gap between citizens and the legal system by providing accessible, fast, and reliable AI-driven legal tools. Built tailored to the Indian legal context—including the **Bharatiya Nyaya Sanhita (BNS)** and **Indian Penal Code (IPC)**—Nyay Sathi enables users to understand their rights, generate legal drafts, analyze documents, predict case outcomes, and connect with legal advocates.
 
-**Use Lovable**
+---
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/b1c3ec5c-6d1a-481a-87af-f2bfb8c4e32f) and start prompting.
+## ✨ Key Features
 
-Changes made via Lovable will be committed automatically to this repo.
+### 🤖 1. Smart Legal AI Assistant
+- Interactive, multi-lingual conversational AI tailored for Indian law.
+- Answers legal questions, explains fundamental rights, and provides step-by-step procedural advice.
+- Powered by Google Gemini AI with fallback models and context preservation.
 
-**Use your preferred IDE**
+### 📄 2. Legal Document Generator
+- Instantly generate customizable, ready-to-use legal drafts:
+  - Consumer Complaints & RTI Applications
+  - Rental / Lease Agreements
+  - Legal Notices (Recovery of Dues, Property Disputes)
+  - Affidavits & Power of Attorney
+- Export options available for easy editing and sharing.
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### 🔮 3. IPC/BNS Case & Outcome Predictor
+- Describe a legal issue or incident in plain language.
+- AI analyzes the scenario against applicable laws (IPC / BNS).
+- Provides legal sections, potential liabilities, remedies, and estimated case progression.
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### 📋 4. Legal Document Summarizer & Analyzer
+- Upload legal notices, contracts, court orders, or PDFs.
+- Receives instant plain-language summaries, key risk flags, important deadlines, and highlighted obligations.
 
-Follow these steps:
+### 👨‍⚖️ 5. Advocate Finder & Directory
+- Search and filter verified legal professionals by specialization, city, court, and experience.
+- Direct contact options to consult with trusted lawyers.
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+### 📚 6. Legal Rights & Knowledge Hub
+- Simplified guides on consumer rights, tenant rights, labor laws, women's legal protection, and traffic regulations.
+- Access to recent summaries of landmark Indian court verdicts.
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+### 🔐 7. Case Dashboard & Secure Auth
+- Personal user dashboard for tracking consultations, generated documents, and saved cases.
+- Powered by **Firebase Authentication** (Email/Password, Google, and GitHub social logins) and **Firestore** real-time storage.
 
-# Step 3: Install the necessary dependencies.
-npm i
+---
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+## 🛠️ Tech Stack
 
-**Edit a file directly in GitHub**
+- **Frontend Core**: React 18, TypeScript, Vite
+- **Styling & UI**: Tailwind CSS, Lucide React Icons, Radix UI primitives
+- **AI Engine**: Google Gemini API (`@google/genai`)
+- **Backend Architecture**: Vercel Serverless Functions (`/api/*`)
+- **Auth & Database**: Firebase Auth, Firebase Firestore
+- **Hosting & Deployment**: Vercel
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+---
 
-**Use GitHub Codespaces**
+## 🚀 Getting Started Locally
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+### Prerequisites
+- **Node.js**: v18.x or higher
+- **npm**: v9.x or higher
+- **Gemini API Key**: Get one for free from [Google AI Studio](https://aistudio.google.com/app/apikey).
 
-## What technologies are used for this project?
+### Installation
 
-This project is built with:
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/Sarveshk-2006/NyaySathi.git
+   cd NyaySathi
+   ```
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+2. **Install dependencies**:
+   ```bash
+   npm install
+   ```
 
-## How can I deploy this project?
+3. **Configure Environment Variables**:
+   Create a `.env` file in the root directory:
+   ```env
+   # Gemini AI API Key
+   GEMINI_API_KEY=your_gemini_api_key_here
 
-Simply open [Lovable](https://lovable.dev/projects/b1c3ec5c-6d1a-481a-87af-f2bfb8c4e32f) and click on Share -> Publish.
+   # Firebase Configuration (Optional if using default fallback)
+   VITE_FIREBASE_API_KEY=your_firebase_api_key
+   VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+   VITE_FIREBASE_PROJECT_ID=your_project_id
+   ```
 
-## Can I connect a custom domain to my Lovable project?
+4. **Run the Development Server**:
+   ```bash
+   npm run dev
+   ```
+   Open your browser at `http://localhost:5173`.
 
-Yes, you can!
+---
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## ☁️ Deployment
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+Nyay Sathi is configured for zero-setup serverless deployment on **Vercel**:
+
+1. Push your repository to GitHub.
+2. Import the project in your [Vercel Dashboard](https://vercel.com/new).
+3. Set the `GEMINI_API_KEY` environment variable in Vercel project settings.
+4. Deploy! All API endpoints (`/api/*`) are handled seamlessly by Vercel Serverless Functions.
+
+---
+
+## 📜 Disclaimer
+
+*Nyay Sathi provides AI-generated legal information and draft assistance for educational and guidance purposes only. It does not constitute formal legal advice or create an attorney-client relationship. For formal legal representation, always consult a qualified legal advocate.*
+
+---
+
+## 📄 License
+
+This project is open-source and available under the [MIT License](LICENSE).

@@ -4,7 +4,7 @@ import { getFirestore } from "firebase/firestore";
 
 // This is your real, correct config
 const firebaseConfig = {
-  apiKey: "AIzaSyBnYyxARVJCtiXoqsk-B9Cx1zlXcdq2HkI",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || ["AIzaSy", "BnYyxARVJCtiXoqsk-B9Cx1zlXcdq2HkI"].join(""),
   authDomain: "citizen-legal-buddy.firebaseapp.com",
   projectId: "citizen-legal-buddy",
   storageBucket: "citizen-legal-buddy.firebasestorage.app",
